@@ -1,0 +1,26 @@
+{
+  "name": "google-cloud-gdrive-mcp",
+  "version": "1.0.0",
+  "description": "OpenClaw MCP server for Google Drive and Google Sheets via Google Cloud OAuth.",
+  "main": "index.js",
+  "scripts": {
+    "auth": "node auth.js",
+    "refresh-token": "node refresh-token.js",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "openclaw",
+    "mcp",
+    "google-drive",
+    "google-sheets",
+    "google-cloud"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "google-auth-library": "^10.6.2",
+    "googleapis": "^171.4.0"
+  },
+  "type": "module"
+}
