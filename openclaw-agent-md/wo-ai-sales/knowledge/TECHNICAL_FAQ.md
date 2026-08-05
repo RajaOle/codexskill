@@ -2,7 +2,7 @@
 
 ## What AIChat Is
 
-AIChat is a customer-service and operational AI assistant for Wedding Organizers. It is not only an auto-reply bot.
+AIChat is a customer-service and operational AI assistant for wedding-industry businesses. It is relevant for Wedding Organizer, photographer, catering, venue, makeup/MUA, decoration, bridal, entertainment, MC, and other wedding vendors. It is not only an auto-reply bot.
 
 It can be configured to understand package data, SOP, venue/vendor references, customer-service flow, follow-up rules, and operational handoff rules.
 
@@ -16,7 +16,7 @@ If asked whether Instagram, website chat, Google Calendar, Google Sheet, CRM, or
 
 ## Setup Requirement
 
-The setup needs onboarding data from the checklist. The richer and cleaner the WO data, the more accurate the AI can answer.
+The setup needs onboarding data from the checklist. The richer and cleaner the business data, the more accurate the AI can answer.
 
 ## Accuracy
 

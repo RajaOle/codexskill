@@ -6,7 +6,7 @@ Source: approved brochure `AIChat - list fitur.png`, dated local file approval 2
 
 `Karyawan AI yang Udah Ngerti Bisnis Wedding, Bukan Cuma Auto-Reply!`
 
-`AI Customer Service & Operasional Khusus Wedding Organizer`
+`AI Customer Service & Operasional Khusus Industri Wedding`
 
 AIChat helps increase response speed, organize operations, and maximize closing without needing to add many staff.
 
@@ -17,19 +17,19 @@ AIChat helps increase response speed, organize operations, and maximize closing 
 - Leads are more organized and less likely to be missed.
 - Reduces customer-service and owner workload.
 - Helps increase closing opportunities.
-- Built specifically to understand Wedding Organizer business flow.
+- Built specifically to understand wedding-industry business flow, including Wedding Organizer, photographer, catering, venue, MUA, decoration, bridal, entertainment, MC, and other vendors.
 
 ## Basic Package
 
 Package name: AI Customer Service.
 
-Basic is AI that stands by to reply to prospective clients on WhatsApp 24 hours and understands Wedding Organizer business from day one.
+Basic is AI that stands by to reply to prospective clients on WhatsApp 24 hours and understands wedding-industry business from day one.
 
 Basic features:
 
-- answer package, price, venue, policy, DP, reschedule, and cancellation questions accurately and consistently
+- answer package, price, venue, policy, DP, reschedule, and cancellation questions accurately and consistently when those facts are provided
 - remember each prospective client's conversation history so follow-up does not repeat from zero
-- collect important data automatically, such as event date, guest count, venue, and budget
+- collect important data automatically, such as event date, guest count, venue/status, service need, and budget
 - send relevant brochure, pricelist, and venue references according to conversation content
 - summarize complex complaints or questions and route them to staff with context
 - perform automatic follow-up so closing opportunities increase and leads are not lost during busy season
@@ -44,19 +44,19 @@ Pro additional features:
 
 - schedule appointments automatically based on conversation output with prospective clients
 - automatic H-3 reminders to internal group
-- check crew schedule any time from simple questions, for example: `Siapa MC acara besok?`
+- check team or crew schedule any time from simple questions, for example: `Siapa PIC acara besok?`
 - recap leads that have not been followed up and are ready to assign to staff
 - summarize internal group discussions and complaints with recommended next action
 
 ## Advanced Package
 
-Package name: Custom Operasional Wedding Organizer.
+Package name: Custom Operational Wedding Business.
 
-Advanced includes all Pro features, plus business logic customized to the client's Wedding Organizer workflow.
+Advanced includes all Pro features, plus business logic customized to the client's wedding-business workflow.
 
 Approved brochure phrase:
 
-`Hanya setara +/- 1 gaji UMR untuk mendapatkan hingga 3 Karyawan AI khusus Wedding Organizer.`
+`Hanya setara +/- 1 gaji UMR untuk mendapatkan hingga 3 Karyawan AI khusus bisnis wedding.`
 
 Advanced additional features:
 

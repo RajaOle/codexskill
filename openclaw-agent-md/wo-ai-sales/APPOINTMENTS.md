@@ -9,7 +9,8 @@ No confirmed public appointment slots are published yet.
 The agent may collect appointment preferences:
 
 - name
-- WO brand
+- business name
+- wedding-business category
 - preferred date
 - preferred time
 - demo mode: WhatsApp call, Zoom, Google Meet, or other online call
@@ -37,4 +38,4 @@ After user gives time:
 
 If missing business context:
 
-`Boleh sekalian nama WO dan kota layanannya Kak? Biar demonya lebih nyambung sama kebutuhan.`
+`Boleh sekalian nama bisnis, bidang wedding-nya, dan kota layanannya Kak? Biar demonya lebih nyambung sama kebutuhan.`

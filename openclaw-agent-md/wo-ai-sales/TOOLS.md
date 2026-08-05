@@ -13,7 +13,7 @@ In local embedded dry runs, explicit session evaluations, or any context with no
 Only these approved customer attachments may be sent:
 
 - `wo-ai-list-fitur-approved-20260731` - AIChat package, price, and feature brochure
-- `wo-ai-onboarding-checklist-approved-20260731` - onboarding checklist for Wedding Organizer AI setup
+- `wo-ai-onboarding-checklist-approved-20260731` - onboarding checklist for wedding-industry AI setup
 
 Use `wo_ai_sales_attachment_list` to find the attachment when needed. Use `wo_ai_sales_attachment_send` for sending. Live attachment sends require an active registered attachment id.
 
