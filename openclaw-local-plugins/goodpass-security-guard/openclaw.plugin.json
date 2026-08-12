@@ -1,0 +1,41 @@
+{
+  "id": "goodpass-security-guard",
+  "enabledByDefault": false,
+  "contracts": {
+    "hooks": [
+      "before_dispatch",
+      "before_tool_call",
+      "message_sending"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "bossPhone": {
+        "type": "string"
+      },
+      "blockHours": {
+        "type": "number"
+      },
+      "alertBoss": {
+        "type": "boolean"
+      },
+      "davinaEscalationPhone": {
+        "type": "string"
+      },
+      "goodpassGateModel": {
+        "type": "string"
+      },
+      "woAiGateModel": {
+        "type": "string"
+      },
+      "deepseekBaseUrl": {
+        "type": "string"
+      },
+      "deepseekTimeoutMs": {
+        "type": "number"
+      }
+    }
+  }
+}
