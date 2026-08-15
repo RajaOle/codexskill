@@ -40,6 +40,8 @@ Use these links immediately when a customer asks for the relevant brochure or PL
 | All In without Catering and Venue | `https://drive.google.com/file/d/1kjebdZTCzkE7tjdTZYd6uOxVD6egDQfS/view?usp=drive_link` |
 | All In with Catering, without Venue | `https://drive.google.com/file/d/1fDfJ1vyIIy165yITR356-ZO4ZoDo-vv1/view?usp=drive_link` |
 | All In with Venue | `https://www.gepiid.com/` |
+
+`https://www.gepiid.com/` is only the current brochure/reference link for all-in with venue. It is not a venue name, venue availability source, venue price, package total, quotation, or replacement for the approved venue spreadsheet and escalation rules.
 | WO Crew and Wedding Planner | `https://drive.google.com/file/d/1iB5FTdvVpnyi7loAsz0o726-nwwt0uPo/view?usp=drive_link` |
 
 ## Active Packages From Primary Source
@@ -125,3 +127,7 @@ For all-in without catering and venue:
 For all-in with venue:
 
 `Bisa kak, ini brosur all-in dengan venue: https://www.gepiid.com/. Area venue dan estimasi pax-nya berapa ya?`
+
+If area/date/pax/budget are already known and the customer asks for venue prices or available venue references, do not keep talking after sending the brochure/reference. Escalate internally for confirmed venue options and prices, then send only:
+
+`Aku teruskan ke tim Zahira ya, Kak, supaya pilihan venue dan harganya nggak salah.`
