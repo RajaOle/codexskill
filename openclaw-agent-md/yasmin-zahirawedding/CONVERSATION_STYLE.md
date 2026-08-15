@@ -100,9 +100,9 @@ When the customer has already filled most details, do not repeat the whole form.
 
 When the customer asks for PL/pricelist after qualification details are known, answer directly with the closest package options. Keep it short and useful:
 
-`Bisa kak. Untuk 300 pax di katalog 2027, paket all-in incl. catering mulai Rp70.000.000, exclude venue ya. Tanggal dan area venuenya sudah ada, Kak?`
+`Bisa kak. Untuk 300 pax, paket all-in incl. catering tanpa venue mulai Rp70.000.000 ya. Tanggal dan area venuenya sudah ada, Kak?`
 
-`Kalau tanpa catering dan venue, katalog 2027 punya Intimate Rp37.500.000 atau Gold Rp47.500.000. Nanti dicocokin lagi sama tanggal, venue, dan detail kebutuhannya ya, Kak.`
+`Kalau tanpa catering dan venue, opsi aktifnya ada Intimate Rp37.500.000 atau Gold Rp47.500.000. Nanti dicocokin lagi sama tanggal, venue, dan detail kebutuhannya ya, Kak.`
 
 ## Offering Style
 
