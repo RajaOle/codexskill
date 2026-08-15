@@ -4,7 +4,7 @@ Read only the file required for the current customer question.
 
 - `BUSINESS_PROFILE.md` - public business name, description, contact posture, consultation modes.
 - `PACKAGES_AND_PRICING.md` - Google Sheet MCP package source of truth, cached active package rows, brochure links, inclusions, exclusions, and pricing rules.
-- `VENUE_INDICATIVE_PRICING_2024_2025.md` - Google Sheet MCP venue source of truth for all-in include venue; only green/yellow cells are valid/bookable.
+- `VENUE_INDICATIVE_PRICING_2024_2025.md` - Google Sheet MCP venue source of truth for all-in include venue; only green/yellow cells are valid/bookable, and `Tdk dipakai` means invalid/escalate for specific venue inquiries.
 - `PACKAGE_BENEFITS_INCLUDE.md` - general package benefit categories and common inclusions.
 - `VENDOR_PARTNERS.md` - public vendor roster, premium-vendor marker, and internal-only coordination contacts.
 - `EVENT_OPERATIONS_JOBDESC.md` - internal-only crew role, jobdesc, checklist, and event-operations reference.

@@ -20,11 +20,15 @@ This file cancels and replaces the old OCR/static venue price tables. Historical
 
 Only spreadsheet cells colored green or yellow are valid/available for booking. All other color-coded venue cells are invalid and must not be quoted as available or bookable.
 
+`Tdk dipakai` is an explicit invalid venue identifier. If a venue row or venue marker says `Tdk dipakai`, that venue must not be referenced as an option, quoted, recommended, or described as available even if another value in the row looks usable.
+
 If a tool call returns only plain values and does not expose cell background color, do not infer availability from the row text, checklist column, dash, blank, asterisk, or price value. In that case, collect the customer's date, area, venue preference, and pax, then say Zahira team needs to confirm the valid venue options.
 
 Green/yellow validity is cell-level. A venue row may have some pax cells valid and other pax cells invalid. Quote only the specific venue-and-pax cell that is green or yellow.
 
-`N/A`, blank, invalid color, non-green/yellow color, or unclear formatting means unavailable/not quotable for that capacity.
+`N/A`, blank, invalid color, non-green/yellow color, `Tdk dipakai`, or unclear formatting means unavailable/not quotable for that capacity.
+
+If a customer asks about a specific venue marked `Tdk dipakai`, do not say the venue is invalid because of an internal marker. Say the venue needs team confirmation, collect date/pax if missing, and follow the escalation route in `ESCALATION_CONTACTS.md`.
 
 ## Customer-Facing Rules
 
@@ -32,6 +36,7 @@ Green/yellow validity is cell-level. A venue row may have some pax cells valid a
 - Never describe a venue price as final quotation, booking hold, confirmed availability, or guaranteed booking.
 - Exact venue availability, venue DP, rescheduling, cancellation, and sudden venue price changes follow the venue's current policy and Zahira team confirmation.
 - If the customer asks for venue recommendations and valid color data is unavailable, ask for area and pax, then offer team confirmation.
+- If the customer asks for a specific venue marked `Tdk dipakai`, route to the Zahira team through the approved escalation contact after collecting the minimum missing details.
 - Do not mention spreadsheet IDs, tabs, color rules, MCP, source status, internal files, or tooling to customers.
 
 ## Package Scope
@@ -59,6 +64,10 @@ When color-valid data is available:
 When only plain value data is available or color validity cannot be checked:
 
 `Untuk all-in dengan venue aku perlu cek valid venue yang available dulu ke tim Zahira ya, Kak. Area venue dan estimasi pax-nya berapa?`
+
+When the requested specific venue is marked `Tdk dipakai`:
+
+`Untuk venue itu aku perlu konfirmasi dulu ke tim Zahira ya, Kak. Boleh info tanggal acara dan estimasi pax-nya supaya tim bisa bantu cek opsi yang paling aman?`
 
 When customer asks for all venue list:
 
