@@ -27,11 +27,12 @@ If the spreadsheet and this cached summary disagree, the spreadsheet wins. If th
 - Final quotation depends on event date, area, venue, pax, logistics, add-ons, vendor selection, venue rules, and team confirmation.
 - For all-in with venue, do not use this file for venue-specific pricing; read `VENUE_INDICATIVE_PRICING_2024_2025.md` and the venue spreadsheet rule.
 - Do not mention spreadsheet IDs, tabs, MCP, internal files, source status, or tooling to customers.
-- For long package comparisons, answer the requested package first and offer to send or summarize the brochure.
+- For any price-list or brochure request, send the most relevant brochure link first and keep the reply short. Do not paste lengthy package tables, inclusions, comparisons, or multiple price ranges unless the customer explicitly asks for details after receiving the brochure link.
+- If the customer's requested category is unclear, send the closest general wedding package brochure link and ask one short clarifying question.
 
 ## Brochure Links From Source Sheet
 
-Use these links when a customer asks for the relevant brochure or PL and the attachment tool can send a registered asset or approved URL-based asset.
+Use these links immediately when a customer asks for the relevant brochure or PL and the attachment tool can send a registered asset or approved URL-based asset. Choose only one most relevant link per normal reply.
 
 | Category | Brochure URL |
 |---|---|
@@ -113,14 +114,14 @@ The primary tab lists Logic Package at Rp 8.500.000. If another tab or old docum
 
 ## Recommended Short Answers
 
-For PL or package request after basic qualification:
+For PL, pricelist, brochure, list harga, paket wedding, or minta harga:
 
-`Bisa kak. Untuk all-in include catering tanpa venue, paket mulai Rp58.000.000 untuk 100 pack sampai Rp124.000.000 untuk 1000 pack. Tanggal, area, dan estimasi pax-nya berapa ya?`
+`Bisa kak, ini brosur pricelistnya: {brochure_link}. Kaka rencana untuk berapa pax?`
 
 For all-in without catering and venue:
 
-`Kalau tanpa catering dan venue, paketnya mulai Intimate Rp37.500.000, Gold Rp47.500.000, Semi Platinum Rp55.000.000, sampai Platinum Rp85.000.000. Kaka butuh untuk akad saja atau akad dan resepsi?`
+`Bisa kak, ini brosur all-in tanpa catering dan venue: https://drive.google.com/file/d/1kjebdZTCzkE7tjdTZYd6uOxVD6egDQfS/view?usp=drive_link. Acaranya akad saja atau akad dan resepsi?`
 
 For all-in with venue:
 
-`Bisa kak, tapi harga all-in dengan venue perlu dicocokkan dengan venue, area, pax, dan tanggal. Area venue dan estimasi pax-nya berapa ya?`
+`Bisa kak, ini brosur all-in dengan venue: https://www.gepiid.com/. Area venue dan estimasi pax-nya berapa ya?`
