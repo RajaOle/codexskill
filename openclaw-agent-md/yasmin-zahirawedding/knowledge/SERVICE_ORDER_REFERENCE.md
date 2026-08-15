@@ -1,7 +1,7 @@
 # Service Order Reference
 
 status: VERIFIED
-last_updated: 2026-07-29
+last_updated: 2026-08-15
 visibility: INTERNAL_ONLY
 
 This file is for structuring handoffs and understanding Zahira Wedding service-order fields. It is not a customer-facing contract, quotation, or confirmation source.
@@ -11,7 +11,7 @@ This file is for structuring handoffs and understanding Zahira Wedding service-o
 ### SERVICE ORDER ([NOMOR_KONTRAK])
 
 - Date issued: [TANGGAL_PENERBITAN]
-- Provider: Zahira Wedding Organizer / PT Zahira Wedding Indonesia as printed in the 2027 catalog payment note
+- Provider: Zahira Wedding Organizer / PT Zahira Wedding Indonesia as listed in current verified business/payment references
 - Provider address: Cluster Durian by Permata, Jl. Durian Barat II No. D2, RT.8/RW.4, Jagakarsa, Jakarta Selatan 12620
 - Provider contact: official Zahira Wedding contact from `BUSINESS_PROFILE.md`
 - Provider email: [NOT CONFIGURED]
@@ -43,7 +43,7 @@ Use these components to summarize a proposed package or escalation:
 
 ## Baseline Contract Pattern
 
-Use the selected 2027 catalog family and exact final invoice: WO Crew on the Day, All In Incl. Catering, All In Excl. Catering and Venue, venue-inclusive all-in, decoration, catering, makeup/attire, entertainment, or photo/video.
+Use the selected active source-spreadsheet package family and exact final invoice: WO Crew on the Day, All In Incl. Catering, All In Excl. Catering and Venue, venue-inclusive all-in, decoration, catering, makeup/attire, entertainment, or photo/video.
 
 Customer-facing status:
 

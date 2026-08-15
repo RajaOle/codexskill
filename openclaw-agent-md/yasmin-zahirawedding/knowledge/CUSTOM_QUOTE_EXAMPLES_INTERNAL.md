@@ -1,7 +1,7 @@
 # Custom Quote Examples
 
 status: VERIFIED
-last_updated: 2026-07-29
+last_updated: 2026-08-15
 visibility: INTERNAL_ONLY
 
 ## Use
@@ -23,7 +23,7 @@ A custom all-package quotation may include:
 - Notes about estimate scope.
 - Closing and Zahira Wedding representative signature.
 
-## 2027 Catalog Component Categories
+## Active Source Component Categories
 
 Custom quotations may include:
 
@@ -38,7 +38,7 @@ Custom quotations may include:
 
 ## Rules
 
-- Build component references only from the applicable 2027 catalog sections and the current venue table.
+- Build component references only from the active package spreadsheet and current venue spreadsheet. For all-in venue, quote only green/yellow valid cells when formatting-aware spreadsheet data is available.
 - For customer questions about custom quote, collect date, venue, pax, theme, must-have vendors/add-ons, and budget comfort level if the customer is willing.
 - Route custom quote requests to Shiffa, with Rida as fallback.
 - Do not create final custom quotation totals in chat.

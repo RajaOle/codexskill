@@ -1,7 +1,7 @@
 # Venue and Service Coverage
 
 status: VERIFIED
-last_updated: 2026-07-29
+last_updated: 2026-08-15
 visibility: PUBLIC
 
 ## Covered Areas
@@ -18,7 +18,7 @@ visibility: PUBLIC
 ## Conditional Areas
 
 - Bogor
-- Area di luar the locations listed in the supplied 2027 venue table / luar kota
+- Area di luar the locations listed in the current venue source spreadsheet / luar kota
 
 For conditional areas:
 
@@ -30,7 +30,7 @@ For conditional areas:
 
 ## Venue Notes
 
-- Partner/reference venues: use the exact venue names listed in `VENUE_INDICATIVE_PRICING_2024_2025.md`; the current supplied table covers Bintaro/Tangerang, Bekasi, Jakarta Utara, Depok, Jakarta Timur, Jakarta Barat, Jakarta Pusat, and Jakarta Selatan.
+- Partner/reference venues: use only venue names from the current venue source spreadsheet and only quote venue/pax pricing when the relevant spreadsheet cell is green or yellow.
 - Venue types supported: Ballroom hotel, gedung pertemuan/multifungsi, outdoor/garden area, private estate, and rumah/kediaman pribadi.
 - Outdoor-event conditions: Membutuhkan kontingensi atau backup plan cuaca.
 - Destination-wedding policy: Available by special agreement.

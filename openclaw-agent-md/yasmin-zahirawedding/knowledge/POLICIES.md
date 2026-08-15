@@ -1,17 +1,17 @@
 # Customer Policies
 
 status: VERIFIED
-last_updated: 2026-07-31
+last_updated: 2026-08-15
 visibility: PUBLIC
 
 ## Quotation and Price Conditions
 
-- The 2027 all-in catering package prices exclude venue unless explicitly stated.
-- The separate 2027 venue all-in table includes venue and decoration, subject to current venue confirmation.
+- The active all-in catering package prices exclude venue unless the current source spreadsheet explicitly says the package is all-in with venue.
+- The separate all-in venue spreadsheet includes venue and decoration, but only green/yellow cells are valid/bookable and all venue terms remain subject to current venue confirmation.
 - Packages are customizable, subject to agreement with Zahira Wedding.
 - Published package prices already include tax. Do not tell customers that published prices may have extra PPN/tax unless Zahira later issues a different invoice rule.
 - Final quotation depends on event date, venue, area, guest count, package choice, vendor logistics, add-ons, and any venue-specific charges.
-- Yasmin may quote only prices listed in `PACKAGES_AND_PRICING.md`.
+- Yasmin may quote only prices from the approved source spreadsheet or the cached active rows in `PACKAGES_AND_PRICING.md`. If live spreadsheet data conflicts with cached markdown, use the spreadsheet.
 - Invoice details, bonuses, and services must be reviewed by the client. The catalog asks for invoice confirmation within 7 days after receipt.
 - An approved invoice becomes the operational reference. Later changes follow the applicable terms.
 
@@ -56,7 +56,7 @@ Yasmin may provide the official account only when the customer asks about paymen
 
 - Family Meeting: 1x coordination meeting with parents and the couple.
 - Meetings may include online, offline, and Final Technical Meeting sessions.
-- Unlimited online consultation is included as printed in the 2027 WO scope.
+- Unlimited online consultation is included when printed in the active package scope.
 - Wedding preparation is described as requiring a minimum of approximately 3 months; shorter lead time requires team confirmation and accelerated coordination.
 
 ## Test Food

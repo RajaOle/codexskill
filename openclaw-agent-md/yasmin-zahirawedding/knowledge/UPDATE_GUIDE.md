@@ -12,7 +12,7 @@ These files are the operator-maintained source of truth for Yasmin.
 6. Remove or mark outdated entries `EXPIRED`; do not silently leave old prices active.
 7. Never put API keys, passwords, OTPs, payment credentials, government IDs, or customer chat transcripts in these files.
 8. Keep staff escalation contacts in `ESCALATION_CONTACTS.md`; keep vendor coordination contacts only in the internal section of `VENDOR_PARTNERS.md`.
-9. Scope every package and venue price to its catalog year. Never silently apply the 2027 catalog to another event year.
+9. Scope every package and venue price to the active spreadsheet source and any year/date labels present there. Never silently apply old catalog data to a new event year.
 10. Keep vendor coordination numbers internal-only and never use them as identity-verification or public-contact data.
 11. Historical client chats may inform tone and workflow only; never copy client identities, private attachments, historical availability, or payment details into public knowledge.
 
