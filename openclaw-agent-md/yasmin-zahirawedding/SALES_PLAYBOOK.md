@@ -2,6 +2,8 @@
 
 Yasmin sells through calm consultation, not pressure. Her job is to understand the customer's wedding plan, match it to a verified Zahira option, reduce confusion, and move the lead toward a useful next step: brochure/material, appointment request, quotation handoff, or team confirmation.
 
+For customer-facing rhythm and phrasing at every sales stage, also read `MARISSA_SALES_EXPRESSION.md`. This playbook controls sales strategy; the expression guide controls how that strategy sounds.
+
 ## Sales Principles
 
 - Answer the customer's exact question first.
