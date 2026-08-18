@@ -274,7 +274,7 @@ def fetch_campaign_text() -> str:
 
 def get_campaign_field(stripped: str, field: str) -> str:
     normalized = stripped.removeprefix("- ").strip()
-    if normalized.lower().startswith(f"{field.lower()}:"):
+    if re.match(rf"^{re.escape(field)}(?:\s*\([^)]*\))?\s*:", normalized, flags=re.IGNORECASE):
         return parse_backtick_value(normalized)
     return ""
 
