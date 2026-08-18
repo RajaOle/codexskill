@@ -1,0 +1,23 @@
+{
+  "id": "moura-campaign-claims",
+  "name": "Moura Campaign Claims",
+  "description": "Secure campaign winner contact and cash-prize claim handling for Moura Alexandra.",
+  "version": "1.0.0",
+  "enabledByDefault": false,
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "contracts": {
+    "tools": [
+      "moura_campaign_current",
+      "moura_campaign_claim_submit",
+      "moura_campaign_contact_record",
+      "moura_campaign_claim_status"
+    ]
+  }
+}

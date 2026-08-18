@@ -3,7 +3,7 @@
 moura_campaign_claims.py - secure Mouru campaign winner claim intake.
 
 This is a narrow handoff service for Moura Alexandra. It validates the current
-campaign file, stores sensitive payout details locally, and notifies Mouru
+campaign Google Doc, stores sensitive payout details locally, and notifies Mouru
 business directors with a non-sensitive claim reference.
 """
 
@@ -20,6 +20,9 @@ import sqlite3
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,7 +33,10 @@ HOME = Path("/home/olekamole")
 STATE_DIR = HOME / ".openclaw/moura-campaign-claims"
 DB_PATH = STATE_DIR / "claims.sqlite"
 LOG_FILE = STATE_DIR / "moura-campaign-claims.log"
-CAMPAIGN_FILE = HOME / ".openclaw/workspace-moura-alexandra/CAMPAIGN_CURRENT.md"
+CAMPAIGN_DOC_ID = "1vm9pfgcKN8oX3q0-YFFwq0fl0fXc1q8x8sMk7yr34NU"
+CAMPAIGN_DOC_URL = f"https://docs.google.com/document/d/{CAMPAIGN_DOC_ID}/edit?tab=t.0"
+GDRIVE_CREDENTIALS_PATH = HOME / ".openclaw/gdrive-credentials.json"
+GDRIVE_TOKEN_PATH = HOME / ".openclaw/gdrive-token.json"
 OPENCLAW = HOME / ".npm-global/bin/openclaw"
 
 CHANNEL = "whatsapp"
@@ -38,14 +44,14 @@ ACCOUNT_ID = "moura-alexandra"
 MAX_TEXT = 160
 
 DIRECTOR_NOTIFY_TARGETS = {
-    "Ibnu": ["+6285643497070"],
-    "Apin": ["+6281231152992", "+62895379652424"],
+    "Ibnu": ["+62REDACTED"],
+    "Apin": ["+62REDACTED", "+62REDACTED"],
 }
 AUTHORIZED_DIRECTORS = {
-    "+685643497070": "Ibnu",
-    "+6285643497070": "Ibnu",
-    "+6281231152992": "Apin",
-    "+62895379652424": "Apin",
+    "+62REDACTED": "Ibnu",
+    "+62REDACTED": "Ibnu",
+    "+62REDACTED": "Apin",
+    "+62REDACTED": "Apin",
 }
 CONTACT_STAGES = {
     "claimed_winner",
@@ -82,6 +88,7 @@ class Campaign:
     voucher_handoff_status: str
     winners: dict[int, Winner]
     file_sha256: str
+    source_url: str
 
 
 def setup_logging() -> None:
@@ -180,10 +187,100 @@ def parse_backtick_value(line: str) -> str:
     return line.split(":", 1)[1].strip() if ":" in line else ""
 
 
-def parse_campaign() -> Campaign:
-    if not CAMPAIGN_FILE.exists():
-        raise FileNotFoundError("CAMPAIGN_CURRENT.md is missing")
-    content = CAMPAIGN_FILE.read_text(encoding="utf-8")
+def read_json_file(path: Path, label: str) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"{label} is missing") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label} is not valid JSON") from exc
+
+
+def http_json(url: str, data: dict[str, str] | None = None, token: str = "") -> dict[str, Any]:
+    encoded = None
+    headers = {"Accept": "application/json"}
+    if data is not None:
+        encoded = urllib.parse.urlencode(data).encode("utf-8")
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, data=encoded, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        message = exc.read().decode("utf-8", errors="replace")[:240]
+        raise RuntimeError(f"Google API HTTP {exc.code}: {message}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Google API connection failed: {exc.reason}") from exc
+
+
+def refresh_gdrive_token(credentials: dict[str, Any], token: dict[str, Any]) -> dict[str, Any]:
+    oauth_config = credentials.get("installed") or credentials.get("web") or {}
+    refresh_token = token.get("refresh_token")
+    if not refresh_token:
+        raise PermissionError("Google Drive OAuth refresh token is missing")
+    response = http_json(
+        "https://oauth2.googleapis.com/token",
+        {
+            "client_id": str(oauth_config.get("client_id", "")),
+            "client_secret": str(oauth_config.get("client_secret", "")),
+            "refresh_token": str(refresh_token),
+            "grant_type": "refresh_token",
+        },
+    )
+    next_token = dict(token)
+    next_token["access_token"] = response.get("access_token", "")
+    next_token["token_type"] = response.get("token_type", "Bearer")
+    next_token["expiry_date"] = int(time.time() * 1000) + int(response.get("expires_in", 3600)) * 1000
+    GDRIVE_TOKEN_PATH.write_text(json.dumps(next_token, indent=2), encoding="utf-8")
+    os.chmod(GDRIVE_TOKEN_PATH, 0o600)
+    return next_token
+
+
+def get_gdrive_access_token() -> str:
+    credentials = read_json_file(GDRIVE_CREDENTIALS_PATH, "Google Drive OAuth credentials")
+    token = read_json_file(GDRIVE_TOKEN_PATH, "Google Drive OAuth token")
+    access_token = str(token.get("access_token") or "")
+    expiry_date = int(token.get("expiry_date") or 0)
+    if not access_token or expiry_date <= int(time.time() * 1000) + 60000:
+        token = refresh_gdrive_token(credentials, token)
+        access_token = str(token.get("access_token") or "")
+    if not access_token:
+        raise PermissionError("Google Drive OAuth access token is missing")
+    return access_token
+
+
+def fetch_campaign_text() -> str:
+    query = urllib.parse.urlencode({"mimeType": "text/plain"})
+    url = f"https://www.googleapis.com/drive/v3/files/{CAMPAIGN_DOC_ID}/export?{query}"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {get_gdrive_access_token()}",
+            "Accept": "text/plain",
+            "User-Agent": "moura-campaign-claims/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        message = exc.read().decode("utf-8", errors="replace")[:240]
+        raise RuntimeError(f"Google Drive export HTTP {exc.code}: {message}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Google Drive export failed: {exc.reason}") from exc
+
+
+def get_campaign_field(stripped: str, field: str) -> str:
+    normalized = stripped.removeprefix("- ").strip()
+    if normalized.lower().startswith(f"{field.lower()}:"):
+        return parse_backtick_value(normalized)
+    return ""
+
+
+def parse_campaign(content: str | None = None) -> Campaign:
+    content = fetch_campaign_text() if content is None else content
     file_sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
     lines = content.splitlines()
 
@@ -197,26 +294,50 @@ def parse_campaign() -> Campaign:
 
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("- Campaign id:") and current_rank is None:
-            campaign_id = parse_backtick_value(stripped)
-        elif stripped.startswith("- Status:") and current_rank is None:
-            status = parse_backtick_value(stripped).lower()
-        elif stripped.startswith("- Winner claim status:") and current_rank is None:
-            winner_claim_status = parse_backtick_value(stripped).lower()
-        elif stripped.startswith("- Payout handoff status:") and current_rank is None:
-            payout_handoff_status = parse_backtick_value(stripped).lower()
-        elif stripped.startswith("- Voucher handoff status:") and current_rank is None:
-            voucher_handoff_status = parse_backtick_value(stripped).lower()
+        if current_rank is None:
+            campaign_id = get_campaign_field(stripped, "Campaign id") or campaign_id
+            status = (get_campaign_field(stripped, "Status") or status).lower()
+            winner_claim_status = (get_campaign_field(stripped, "Winner claim status") or winner_claim_status).lower()
+            payout_handoff_status = (
+                get_campaign_field(stripped, "Payout handoff status")
+                or get_campaign_field(stripped, "Payout handoff")
+                or payout_handoff_status
+            ).lower()
+            voucher_handoff_status = (
+                get_campaign_field(stripped, "Voucher handoff status")
+                or get_campaign_field(stripped, "Voucher handoff")
+                or voucher_handoff_status
+            ).lower()
 
         winner_match = re.match(r"^Winner\s+([1-9][0-9]*):$", stripped)
+        numbered_winner_match = re.match(r"^([1-9][0-9]*)\.\s+(@?[A-Za-z0-9._]+)\s*$", stripped)
         if winner_match:
             current_rank = int(winner_match.group(1))
             winners[current_rank] = {}
             continue
+        if numbered_winner_match:
+            current_rank = int(numbered_winner_match.group(1))
+            winners[current_rank] = {
+                "instagram username": numbered_winner_match.group(2),
+                "status": "announced",
+            }
+            continue
 
         if current_rank is not None and stripped.startswith("- ") and ":" in stripped:
             key, value = stripped[2:].split(":", 1)
-            winners[current_rank][key.strip().lower()] = parse_backtick_value(stripped)
+            normalized_key = key.strip().lower()
+            if normalized_key == "cash":
+                normalized_key = "prize cash"
+            elif normalized_key == "voucher":
+                normalized_key = "voucher value"
+            elif normalized_key == "code":
+                normalized_key = "voucher code"
+            winners[current_rank][normalized_key] = parse_backtick_value(stripped)
+            continue
+
+        if current_rank is not None and stripped.startswith("http"):
+            for winner_data in winners.values():
+                winner_data.setdefault("voucher product link", stripped)
 
     parsed_winners: dict[int, Winner] = {}
     for rank, data in winners.items():
@@ -233,7 +354,7 @@ def parse_campaign() -> Campaign:
         )
 
     if not campaign_id:
-        raise ValueError("campaign id is missing in CAMPAIGN_CURRENT.md")
+        raise ValueError("campaign id is missing in current campaign Google Doc")
     return Campaign(
         campaign_id=campaign_id,
         status=status,
@@ -242,7 +363,27 @@ def parse_campaign() -> Campaign:
         voucher_handoff_status=voucher_handoff_status,
         winners=parsed_winners,
         file_sha256=file_sha,
+        source_url=CAMPAIGN_DOC_URL,
     )
+
+
+def current_campaign() -> dict[str, Any]:
+    content = fetch_campaign_text()
+    campaign = parse_campaign(content)
+    return {
+        "ok": True,
+        "source": "google_doc",
+        "source_url": campaign.source_url,
+        "document_id": CAMPAIGN_DOC_ID,
+        "sha256": campaign.file_sha256,
+        "campaign_id": campaign.campaign_id,
+        "campaign_status": campaign.status,
+        "winner_claim_status": campaign.winner_claim_status,
+        "payout_handoff_status": campaign.payout_handoff_status,
+        "voucher_handoff_status": campaign.voucher_handoff_status,
+        "winners_count": len(campaign.winners),
+        "campaign_text": content,
+    }
 
 
 def connect() -> sqlite3.Connection:
@@ -714,6 +855,8 @@ def main() -> int:
     status.add_argument("--payload", help="JSON payload")
     status.add_argument("--payload-b64", help="Base64-encoded JSON payload")
 
+    sub.add_parser("current-json", help="Return current campaign source text from Google Docs")
+
     args = parser.parse_args()
     try:
         conn = connect()
@@ -729,6 +872,9 @@ def main() -> int:
         if args.command == "status-json":
             payload = load_payload_from_args(args)
             print(text_result(claim_status(conn, payload)))
+            return 0
+        if args.command == "current-json":
+            print(text_result(current_campaign()))
             return 0
         raise ValueError("unknown command")
     except Exception as exc:  # noqa: BLE001

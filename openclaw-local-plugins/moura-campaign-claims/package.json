@@ -1,0 +1,15 @@
+{
+  "name": "moura-campaign-claims",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Secure campaign winner cash-prize claim submission tool for Moura Alexandra.",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.17"
+  }
+}
