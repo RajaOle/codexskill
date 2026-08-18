@@ -855,7 +855,9 @@ def main() -> int:
     status.add_argument("--payload", help="JSON payload")
     status.add_argument("--payload-b64", help="Base64-encoded JSON payload")
 
-    sub.add_parser("current-json", help="Return current campaign source text from Google Docs")
+    current = sub.add_parser("current-json", help="Return current campaign source text from Google Docs")
+    current.add_argument("--payload", help="Ignored JSON payload")
+    current.add_argument("--payload-b64", help="Ignored Base64-encoded JSON payload")
 
     args = parser.parse_args()
     try:
