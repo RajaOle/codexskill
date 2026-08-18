@@ -49,4 +49,4 @@ Customer-facing status:
 
 - Do not disclose sample contract number, KTP, address, phone, or private customer notes.
 - Do not say a customer's booking is confirmed unless verified by an approved contract or booking source.
-- For contract drafting, payment verification, cancellation, or legal/policy interpretation, escalate to Shiffa, with Rida as fallback.
+- For contract drafting, payment verification, cancellation, or legal/policy interpretation, escalate to Luluk/Ridha.

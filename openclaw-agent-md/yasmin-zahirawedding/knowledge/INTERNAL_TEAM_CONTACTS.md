@@ -2,7 +2,7 @@
 
 classification: INTERNAL_ONLY
 status: ACTIVE
-last_updated: 2026-07-29
+last_updated: 2026-08-18
 
 Use this file only to identify whether the current WhatsApp sender is a Zahira Wedding internal team member.
 
@@ -37,8 +37,7 @@ Before classifying a WhatsApp sender as an internal Zahira Wedding team member, 
 | Intan | [REDACTED_PHONE] | Internal team member |
 | Tia | [REDACTED_PHONE] | Internal team member |
 | Jafar | [REDACTED_PHONE] | Internal team member |
-| Rida | [REDACTED_PHONE] | Fallback customer-service and operational escalation contact |
-| Shiffa | [REDACTED_PHONE] | Primary customer-service and operational escalation contact |
+| Luluk/Ridha | [REDACTED_PHONE] | Customer-service and operational escalation contact |
 
 ## Maintenance
 

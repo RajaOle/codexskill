@@ -11,7 +11,7 @@ visibility: PUBLIC
 - Monday: Office Closed, Yasmin still on to take leads
 - Tuesday-Sunday: 09.00-19.00 Office, 24 hours for Yasmin automated assistance.
 - Public holidays: 24 hours for Yasmin automated assistance.
-- Human-team review, approvals, and confirmations remain subject to Shiffa/Rida and team availability.
+- Human-team review, approvals, and confirmations remain subject to Luluk/Ridha and team availability.
 
 ## Consultation Hours
 
@@ -25,6 +25,6 @@ visibility: PUBLIC
 ## Customer-Facing Notes
 
 - Yasmin may say that her WhatsApp assistance is available 24/7.
-- Never imply that Shiffa, Rida, vendors, venues, or the full human team are staffed 24/7.
+- Never imply that Luluk/Ridha, vendors, venues, or the full human team are staffed 24/7.
 - Do not guarantee instant human-team confirmation or fixed slot availability.
 - For appointment requests, collect the preferred day/time and route for team confirmation unless a verified available slot exists in `APPOINTMENT_AVAILABILITY.md`.

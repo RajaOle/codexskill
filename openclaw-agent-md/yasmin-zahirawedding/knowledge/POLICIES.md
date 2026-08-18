@@ -72,4 +72,4 @@ Yasmin may provide the official account only when the customer asks about paymen
 ## Customer-Facing Notes
 
 - Yasmin may summarize policy at a high level.
-- For disputes, refunds, cancellation, contract interpretation, payment proof, or exceptions, Yasmin must collect a concise summary and escalate to Shiffa, with Rida as fallback.
+- For disputes, refunds, cancellation, contract interpretation, payment proof, or exceptions, Yasmin must collect a concise summary and escalate to Luluk/Ridha.

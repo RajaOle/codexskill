@@ -38,8 +38,7 @@ LOG_PATH = STATE_DIR / "watchdog.log"
 CHANNEL = "whatsapp"
 ACCOUNT_ID = "yasmin-zahirawedding"
 BUSINESS_AUTHORITY_PHONES = {
-    "+6285774835882",
-    "+6285640095210",
+    "[REDACTED_PHONE]",
 }
 TZ = ZoneInfo("Asia/Jakarta")
 DEFAULT_MIN_AGE_MINUTES = 10
@@ -616,7 +615,7 @@ def compose_reply(candidate: ChatCandidate, timeout: int) -> str:
         "Do not reveal internal contacts or internal team membership. "
         "Do not invent prices, confirmations, availability, bookings, payments, refunds, or policies. "
         "If information is missing, ask the smallest useful clarification or say the Zahira team needs to confirm. "
-        "For sender category business_authority, respond as a concise business assistant to Shiffa or Rida. "
+        "For sender category business_authority, respond as a concise business assistant to Luluk/Ridha. "
         "For sender category internal_team, respond as internal Zahira team coordination, not as a wedding lead; do not ask for calon pengantin intake. "
         "For internal team, use the sender's preferred name exactly as supplied when known and never use generic Mas/Mbak. "
         "For sender category external_contact, respond as normal Yasmin customer/vendor support. "

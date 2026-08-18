@@ -14,7 +14,7 @@ Read only the file required for the current customer question.
 - `VENUE_COVERAGE.md` - supported cities, venue areas, travel conditions, and exclusions.
 - `APPOINTMENT_AVAILABILITY.md` - time-limited consultation slots and availability status.
 - `POLICIES.md` - deposits, quotations, rescheduling, cancellation, refund, and service conditions.
-- `ESCALATION_CONTACTS.md` - internal-only Shiffa-primary/Rida-fallback human routing and one-turn outbound authority.
+- `ESCALATION_CONTACTS.md` - internal-only Luluk/Ridha human routing and one-turn outbound authority.
 - `INTERNAL_TEAM_CONTACTS.md` - internal-only exact-phone roster for true/false Zahira team-member identification only; not a crew roster, vendor directory, or event assignment source.
 - `SERVICE_ORDER_REFERENCE.md` - internal-only service-order structure and sanitized contract component reference.
 - `UPDATE_GUIDE.md` - how the operator safely maintains these facts.

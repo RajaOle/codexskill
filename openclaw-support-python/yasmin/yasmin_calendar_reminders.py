@@ -4,7 +4,7 @@ yasmin_calendar_reminders.py - send due Yasmin calendar reminders to approved ta
 
 The internal calendar service owns event/reminder creation and due marking. This
 dispatcher only consumes due Yasmin reminders, sends them through Yasmin's
-WhatsApp account to Shiffa or Rida as fallback, then updates reminder status
+WhatsApp account to Luluk/Ridha, then updates reminder status
 for auditability.
 """
 
@@ -30,8 +30,8 @@ OPENCLAW = HOME / ".npm-global/bin/openclaw"
 AGENT_ID = "yasmin-zahirawedding"
 CHANNEL = "whatsapp"
 ACCOUNT_ID = "yasmin-zahirawedding"
-PRIMARY_AUTHORITY_TARGET = "+6285774835882"
-FALLBACK_AUTHORITY_TARGET = "+6285640095210"
+PRIMARY_AUTHORITY_TARGET = "[REDACTED_PHONE]"
+FALLBACK_AUTHORITY_TARGET = "[REDACTED_PHONE]"
 ALLOWED_TARGETS = {
     PRIMARY_AUTHORITY_TARGET,
     FALLBACK_AUTHORITY_TARGET,
@@ -208,7 +208,7 @@ def dispatch(conn: sqlite3.Connection, dry_run: bool, limit: int) -> dict[str, A
         ok, detail = send_openclaw(message, target=target, dry_run=dry_run)
         if not ok and target == PRIMARY_AUTHORITY_TARGET:
             logging.warning(
-                "primary reminder delivery failed id=%s; trying Rida fallback",
+                "primary reminder delivery failed id=%s; retrying Luluk/Ridha target",
                 reminder_id,
             )
             ok, detail = send_openclaw(

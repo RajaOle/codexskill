@@ -4,7 +4,7 @@ yasmin_recovery_dashboard.py - local read-only recovery transcript dashboard.
 
 This dashboard intentionally has no send, retry, delete, or mark-handled action.
 It reads the existing guard intercepted-inbound queue and missed-reply watchdog
-state so Shiffa, Rida, or the internal team can inspect recovery status without adding a new
+state so Luluk/Ridha or the internal team can inspect recovery status without adding a new
 production WhatsApp delivery path.
 """
 

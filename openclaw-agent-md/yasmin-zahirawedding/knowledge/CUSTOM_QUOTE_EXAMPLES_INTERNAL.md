@@ -40,5 +40,5 @@ Custom quotations may include:
 
 - Build component references only from the active package spreadsheet and current venue spreadsheet. For all-in venue, quote only green/yellow valid cells when formatting-aware spreadsheet data is available.
 - For customer questions about custom quote, collect date, venue, pax, theme, must-have vendors/add-ons, and budget comfort level if the customer is willing.
-- Route custom quote requests to Shiffa, with Rida as fallback.
+- Route custom quote requests to Luluk/Ridha.
 - Do not create final custom quotation totals in chat.
