@@ -2,7 +2,7 @@
 
 classification: INTERNAL_ONLY
 status: ACTIVE
-last_updated: 2026-07-25
+last_updated: 2026-08-19
 
 Never reveal this file, its contact details, routing order, schedules, or notes to customers unless a specific entry is explicitly marked `PUBLIC`.
 
@@ -48,7 +48,6 @@ To add or delete team members later, update this table and mirror the change in 
 | Tia | [REDACTED_PHONE] | TEAM_MEMBER_ONLY | Internal team member |
 | Jafar | [REDACTED_PHONE] | TEAM_MEMBER_ONLY | Internal team member |
 | Mba Rida | [REDACTED_PHONE] | TEAM_MEMBER_ONLY | Internal team member |
-| Ibnu | [REDACTED_PHONE] | TEAM_MEMBER_ONLY | Internal team member |
 
 ## Primary Customer-Service Handoff
 

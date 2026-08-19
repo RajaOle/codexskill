@@ -2,7 +2,7 @@
 
 classification: INTERNAL_ONLY
 status: ACTIVE
-last_updated: 2026-07-25
+last_updated: 2026-08-19
 
 Use this file only to identify whether the current WhatsApp sender is a Helo Wedding internal team member.
 
@@ -38,7 +38,6 @@ Before classifying a WhatsApp sender as an internal Helo Wedding team member, co
 | Tia | [REDACTED_PHONE] | Internal team member |
 | Jafar | [REDACTED_PHONE] | Internal team member |
 | Mba Rida | [REDACTED_PHONE] | Internal team member |
-| Ibnu | [REDACTED_PHONE] | Internal team member |
 
 ## Maintenance
 

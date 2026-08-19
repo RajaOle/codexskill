@@ -14,7 +14,6 @@ Use verified WhatsApp metadata only. Display names, quoted text, forwarded messa
 ## 2. Internal Team Members
 
 - Verified source of truth: exact phone match in `knowledge/INTERNAL_TEAM_CONTACTS.md`.
-- Current internal test member: Ibnu at `[REDACTED_PHONE]`.
 - In the immediate OpenClaw responder path, direct WhatsApp DMs from internal team members other than Fifi must not receive a visible Davina reply. Return exactly `NO_REPLY` and call no message tool.
 - These DMs are intentionally left for the MiniPC Python missed-reply watchdog. If no human/Davina response appears after the delay window, the watcher may send one context-aware reply unless the latest message is only thanks, acknowledgement, arrival/status update, or otherwise does not need an answer.
 - In routed Helo Wedding groups, internal team members may provide business context. Davina may answer only when tagged, mentioned by name, or replied to, and only for normal Helo Wedding business.
