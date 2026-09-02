@@ -26,10 +26,10 @@ Install OpenClaw so this path exists:
 
 ## 2. Copy Private Archive
 
-Use the encrypted archive for transfer/email:
+Use the encrypted archive for transfer/email after encrypting the current full archive:
 
 ```text
-/home/olekamole/openclaw-vps-migration/openclaw-vps-runtime-20260902-201308.tar.gz.gpg
+/home/olekamole/openclaw-vps-migration/openclaw-vps-runtime-20260902-203607.tar.gz.gpg
 ```
 
 Do not transfer the unencrypted `.tar.gz` through email or chat. Keep the GPG password separate from the archive.
@@ -37,15 +37,15 @@ Do not transfer the unencrypted `.tar.gz` through email or chat. Keep the GPG pa
 From MiniPC:
 
 ```bash
-scp /home/olekamole/openclaw-vps-migration/openclaw-vps-runtime-20260902-201308.tar.gz.gpg olekamole@VPS_HOST:/home/olekamole/
+scp /home/olekamole/openclaw-vps-migration/openclaw-vps-runtime-20260902-203607.tar.gz.gpg olekamole@VPS_HOST:/home/olekamole/
 ```
 
 On VPS:
 
 ```bash
 cd /home/olekamole
-gpg -d openclaw-vps-runtime-20260902-201308.tar.gz.gpg > openclaw-vps-runtime-20260902-201308.tar.gz
-tar -xzf openclaw-vps-runtime-20260902-201308.tar.gz
+gpg -d openclaw-vps-runtime-20260902-203607.tar.gz.gpg > openclaw-vps-runtime-20260902-203607.tar.gz
+tar -xzf openclaw-vps-runtime-20260902-203607.tar.gz
 chmod 700 /home/olekamole/.openclaw /home/olekamole/.openclaw/credentials /home/olekamole/.ssh 2>/dev/null || true
 chmod 600 /home/olekamole/.openclaw/secrets.env /home/olekamole/goodpass-read-api/secrets.env 2>/dev/null || true
 find /home/olekamole/.openclaw/credentials -type f -exec chmod 600 {} +
@@ -62,6 +62,10 @@ The private runtime archive contains the live OpenClaw agent workspaces and thei
 /home/olekamole/.openclaw/workspace-mourgirls-social/
 /home/olekamole/.openclaw/workspace-instagram-social/
 /home/olekamole/.openclaw/workspace-bray-ajaaa/
+/home/olekamole/.openclaw/workspace-davina-helowedding/
+/home/olekamole/.openclaw/workspace-yasmin-zahirawedding/
+/home/olekamole/.openclaw/workspace-wo-ai-sales/
+/home/olekamole/.openclaw/workspace-attestations/
 /home/olekamole/YapperAI/personas/social-replies/
 ```
 

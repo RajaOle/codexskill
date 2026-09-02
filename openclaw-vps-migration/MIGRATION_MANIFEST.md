@@ -27,16 +27,25 @@ Move OpenClaw agents, Goodpass backend helpers, Moura/Mouru automation, Mourgirl
 | `mourgirls-social` | `.openclaw/workspace-mourgirls-social` | OpenClaw agent DB under `.openclaw/agents/mourgirls-social` | Instagram worker |
 | `instagram-social` | `.openclaw/workspace-instagram-social` | OpenClaw agent DB under `.openclaw/agents/instagram-social` | Instagram worker |
 | `bray-ajaaa` | `.openclaw/workspace-bray-ajaaa` | OpenClaw agent DB under `.openclaw/agents/bray-ajaaa` | Instagram/YapperAI/OpenClaw |
+| `davina-helowedding` | `.openclaw/workspace-davina-helowedding` | OpenClaw agent DB under `.openclaw/agents/davina-helowedding` | WhatsApp/OpenClaw |
+| `yasmin-zahirawedding` | `.openclaw/workspace-yasmin-zahirawedding` | OpenClaw agent DB under `.openclaw/agents/yasmin-zahirawedding` | WhatsApp/OpenClaw |
+| `wo-ai-sales` | `.openclaw/workspace-wo-ai-sales` | OpenClaw agent DB under `.openclaw/agents/wo-ai-sales` | WhatsApp/OpenClaw |
+| `main` | `.openclaw/workspace` | OpenClaw agent DB under `.openclaw/agents/main` | OpenClaw default workspace |
 
 ## Agent Instruction Files In Private Archive
 
-The current private archive `openclaw-vps-runtime-20260902-201308.tar.gz` includes live runtime instruction files for:
+The current full private archive `openclaw-vps-runtime-20260902-203607.tar.gz` includes live runtime instruction files for:
 
 - `.openclaw/workspace-goodpass-admin/`
 - `.openclaw/workspace-moura-alexandra/`
 - `.openclaw/workspace-mourgirls-social/`
 - `.openclaw/workspace-instagram-social/`
 - `.openclaw/workspace-bray-ajaaa/`
+- `.openclaw/workspace-davina-helowedding/`
+- `.openclaw/workspace-yasmin-zahirawedding/`
+- `.openclaw/workspace-wo-ai-sales/`
+- `.openclaw/workspace/`
+- `.openclaw/workspace-attestations/`
 - `YapperAI/personas/social-replies/`
 
 Core files present across these workspaces include:
@@ -68,7 +77,8 @@ Must copy as private runtime data:
 - `.openclaw/local-plugins/`
 - `.openclaw/agents/`
 - `.openclaw/memory/`
-- `.openclaw/mcp-servers/` if present
+- `.openclaw/mcp-servers/`
+- root OpenClaw SOP docs: `AGENTS.md`, `OPENCLAW_AGENT_DRY_RUN_SOP.md`, `OPENCLAW_QR_LOGIN_SOP.md`
 
 Current top-level OpenClaw secret keys:
 
