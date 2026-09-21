@@ -1,0 +1,4 @@
+interface:
+  display_name: "Local Scraper Guardrails"
+  short_description: "Run local scrapers with bounded, block-aware execution"
+  default_prompt: "Use $local-scraper-guardrails for this scraping task."
