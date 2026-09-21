@@ -19,6 +19,8 @@ Use the repository's local scraper engine. Do not replace it with an LLM-based s
 
 - Use the local engine's checkpoint/resume path. Keep deduplication enabled.
 - Keep pacing and cooldowns enabled. Do not increase concurrency or remove delays to accelerate a run.
+- Preserve one canonical output schema across every category and run. Raw records and merged exports must keep these columns, in this order: `place_id,name,website,phone,address,city,state,country,maps_url,category,email,emails,tile_id,scraped_at,enriched_at`.
+- Missing values stay present as empty/null values. Never drop a column because a job has no values for it. Normalize legacy JSONL records before merging or exporting.
 - Use dry-run first when behavior is uncertain. For a requested live run, state the cap and stop conditions before starting.
 - Use only authorized network paths. Do not add free public proxies, CAPTCHA-solving, stealth plugins, fingerprint spoofing, or IP rotation intended to evade a block.
 - If an authorized proxy is already part of the local design, keep one stable proxy per browser session and never log proxy credentials.
@@ -36,6 +38,6 @@ After stopping: preserve the checkpoint, close the browser, clean only the proce
 
 ## After Running
 
-Verify record count, progress/checkpoint state, completed scope, pause/error flags, and lock cleanup. Report remaining scope and whether a block signal occurred. Mention CPU, memory, or duration impact when material.
+Verify record count, progress/checkpoint state, completed scope, pause/error flags, lock cleanup, and canonical output key/header order. Report remaining scope and whether a block signal occurred. Mention CPU, memory, or duration impact when material.
 
 For code changes, use the coding workflow: read full files before editing, keep changes narrow, add focused tests, and validate without live source traffic where possible.
