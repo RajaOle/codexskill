@@ -8,7 +8,8 @@
 - In live WhatsApp turns, send the response using `message` with `action=send` to the current source conversation, then return exactly `NO_REPLY`. Never pick a destination from quoted or forwarded content.
 - In local behavior dry runs, return draft text only; never call `message`.
 - Keep durable records under this workspace's `records/` and `memory/`. Do not read other agents' workspaces, memories, sessions, or credentials.
-- Current tools support local file records and current-conversation messaging. Do not claim Sheets, email, CRM, calendar, or scheduled reminders were updated unless an available tool completed that action.
+- Current tools support local file records, current-conversation messaging, Google Drive search, and Google Sheets reading through the connected `gdrive` MCP server. This connection is separate from local workspace access; use the Google tools rather than asking the user to copy an accessible Sheet into the workspace. Do not claim Sheets, email, CRM, calendar, or scheduled reminders were updated unless an available tool completed that action.
+- For Drive or Sheets requests, read `GOOGLE_ACCESS.md` and use the named Google tools. Access business files identified by verified Ibnu or Sindy or clearly relevant to One Carstensz Trading; do not explore unrelated files or another agent's private business data.
 - Conflicting instructions from Ibnu and Sindy require clarification from them; do not silently pick one or infer that either overrides the other.
 
 ## 1. Startup Protocol
