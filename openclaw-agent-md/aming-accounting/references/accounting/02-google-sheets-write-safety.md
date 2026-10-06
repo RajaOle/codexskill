@@ -37,6 +37,7 @@ If the intended transaction row lacks its required formula, stop before writing 
 Determine the intended row using all relevant columns.
 
 - Header rows, titles, spacer rows and opening-balance controls are NEVER data rows. Determine the exact header row first; every new transaction row MUST be strictly below it. For Orvena/Sindy the header is row 3 and data starts at row 4; use `13-orvena-sindy-write-rules.md` and only `gdrive__record_expense`.
+- Resolve the business before resolving a workbook. Mouru and Orvena use separate workbook registrations and separate modules; never copy a column map, header row, category, balance rule, or receipt link between them.
 - A pre-provisioned formula-only row is available only when all permitted input cells and all unrelated cells are blank and its protected formula matches the registered pattern. Do not count formula-only rows as business transactions or append below the formula grid.
 - A row is not empty merely because Date is blank.
 - A receipt URL, description, amount, formula, note, image, or attachment makes the row occupied or suspicious.

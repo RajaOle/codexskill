@@ -15,7 +15,9 @@ This is a redacted public backup note for the local OpenClaw routing change.
 
 The accounting group uses a lean workflow:
 
-- Primary model: `google/gemini-3.1-flash-lite`; fallback: `deepseek/deepseek-flash`. This avoids the observed DeepSeek malformed-tool-call path without changing other agents' models. No provider is assumed infallible.
+- Aming handles two separate businesses: Mouru and Orvena International Trading. Resolve the business from the source group before loading modules, opening files, or writing a ledger.
+- Primary model: `deepseek/deepseek-flash`; fallback: `deepseek/deepseek-v4-flash`. Gemini is not configured for Aming.
+- Receipt extraction uses Tesseract and approved OCR tools. DeepSeek structures OCR text; it does not fill unreadable fields. Aming has no image model configured.
 - Keep tool access scoped to messaging, receipt image/OCR support, and Google Drive/Sheets accounting actions.
 - Avoid broad code, gateway, session, browser, web, generation, voice, and unrelated business tools.
 - For ordinary expense requests, do not inspect monthly rollover, total rows, historical schemas, or unrelated months unless explicitly asked or formula validation fails.

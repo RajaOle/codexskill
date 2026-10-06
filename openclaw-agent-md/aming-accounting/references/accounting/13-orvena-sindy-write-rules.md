@@ -5,7 +5,7 @@ processing an Orvena receipt. Do not load or copy a Mouru workbook as its templa
 
 ## Project and immutable template
 
-- This ledger belongs to **Orvena**, not Mouru. Sindy is the balance owner.
+- This ledger belongs to **Orvena International Trading**, not Mouru. Sindy is the balance owner.
 - Live workbook: `Petty Cash Sindy`; private ID redacted from the public backup. Resolve the registered ID from the protected local module.
 - Registered tab: `Oktober 2026`; numeric sheet ID `0`.
 - Rows **1–3 are template/control rows and NEVER transaction rows**.
