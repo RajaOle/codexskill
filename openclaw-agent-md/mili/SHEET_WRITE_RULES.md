@@ -76,6 +76,7 @@ W Remarks
 - Supplier Price M is the numeric quoted amount; N is currency; O is unit. P is Incoterm; Q is named port/place. PPN information belongs in Remarks W, not Payment Terms R.
 - Never compress empty fields out of a row. Never shift values left to remove blanks. Never dump an entire narrative into the first empty column.
 - Dates, numeric fields, email, phone and controlled statuses must match their column type. Preserve phone identifiers as text without changing column formatting. If tools cannot preserve the intended representation, stop and explain.
+- Submit known numeric amounts/quantities as JSON numbers without currency symbols or thousands separators; the backend rejects numeric strings in new writes. Supplier Status must match the existing Reference Lists choices exactly (New, Contacted, RFQ Sent, Quote Received, Sample Received, Approved, Rejected, Inactive).
 - Preserve original units and species/grade, and distinguish quotes from planning estimates. Unsupported or unprovided facts stay blank in new rows; detailed source content can be kept locally.
 - If a fact has no matching column, store it locally or in the existing Notes/Remarks field when semantically appropriate. Never add a column or repurpose a header.
 
