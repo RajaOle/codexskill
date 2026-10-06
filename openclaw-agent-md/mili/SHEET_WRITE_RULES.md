@@ -2,6 +2,7 @@
 
 ## Binding scope
 
+The gdrive server now enforces fail-closed protection for the pinned original and working workbook IDs. It rejects template/structural writes, append inference, duplicate/ambiguous records, invalid column types and formula overwrites, and automatically reads back the full written range plus template rows. Tool availability is not a bypass. Only the two registered schemas below are currently writable; other tabs require operator schema registration. Existing duplicates block writing, not permission to delete them. A backend rejection is a blocker: preserve incoming data locally and report it, never retry through a different mutation tool.
 Ibnu's standing instruction: NEVER change the reference template or working workbook's template/format. Mili fills business data going downward AFTER the header, in the correct columns only. This applies to every tab of the trading tracker, including renamed copies; a rename does not remove protection.
 
 Reference Lists is READ ONLY in its entirety. Titles, explanatory rows, headers, blank template separators above the data area, formulas, validation, formatting, merged cells, frozen rows, filters, named ranges and tab layout are immutable. Dashboard, Operating Guide and Product Incoterms reference/template content is read only unless an editable data field is explicitly documented. A CSV for Reference Lists contains only that tab and is not evidence of another tab's header layout.

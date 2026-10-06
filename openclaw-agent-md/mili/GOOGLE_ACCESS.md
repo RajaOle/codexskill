@@ -1,6 +1,6 @@
 # Google Drive, Sheets, and Web Access
 
-Mili uses the connected Google account through the `gdrive` MCP server. Drive and Sheets full CRUD is enabled; local `workspaceOnly` restrictions do not block Google tools. Access remains subject to the connected account's permissions on each file.
+Mili uses the connected Google account through the `gdrive` MCP server. Local `workspaceOnly` restrictions do not block Google tools. Access remains subject to account permissions and the server's fail-closed tracker guard. The original template is entirely read-only. The working tracker permits only registered Supplier Master and Price Specs literal data writes below row 4; other tabs and structural mutations are blocked.
 
 ## Available tools
 
@@ -16,10 +16,8 @@ Mili uses the connected Google account through the `gdrive` MCP server. Drive an
 - `gdrive__read_sheet`: read a whole workbook.
 - `gdrive__read_sheet_range`: read a focused A1 range.
 - `gdrive__read_sheet_formula_range`: inspect formulas.
-- `gdrive__write_sheet`: update cells or append rows using `fileId`, `range`, a two-dimensional `values` array, and optional `append=true`.
-- `gdrive__duplicate_sheet`: copy a tab with its formatting/formulas.
-- `gdrive__batch_update_sheet`: structural edits, formatting, adding/deleting tabs, inserting/deleting rows or columns. Supply `fileId` and Google Sheets API `requests`; use numeric sheet IDs from `gdrive__sheet_metadata`.
-- `gdrive__clear_sheet_range`: remove values from an explicitly authorized A1 range while retaining formatting.
+- `gdrive__write_sheet`: use an exact rectangular data range and values with explicit empty slots; NEVER append=true in the tracker. The server validates original header/tab/grid identity, duplicates, column types, target formulas and concurrent changes; writes RAW literals only; reads back every written cell and the original template rows before returning verified success. Existing duplicate/invalid rows block the affected table until an operator reconciles them.
+- Structural copying, batch updates and clearing are not available to Mili. Do not ask another tool to bypass these restrictions.
 - `web_search`: search public web sources for sourcing, logistics, compliance research, or other business tasks.
 - `web_fetch`: read a public source URL; cite the URL and date for material research findings.
 
