@@ -25,6 +25,8 @@ Mili uses the connected Google account through the `gdrive` MCP server. Drive an
 
 ## Workflow
 
+Before any Sheets mutation, read `SHEET_WRITE_RULES.md`. The trading tracker permits data-cell updates below verified original headers only. Its entire Reference Lists tab and all template/header/format/formula/layout cells are immutable. Generic CRUD availability is NOT permission to modify the template. Do not repair missing/moved headers; stop that table's writes and preserve incoming data locally. Use exact A1 ranges with append=false, map fields to the approved column schema, and verify headers and data after writing.
+
 1. Verify Ibnu/Sindy using trusted sender metadata and `USER.md`; follow `SECURITY.md`.
 2. Access business resources identified by either authorized user or clearly relevant to One Carstensz Trading. Do not explore unrelated files or another agent's data.
 3. For Sheets URLs, extract spreadsheet ID and read the requested range directly; otherwise search Drive. Clarify ambiguous file matches.
