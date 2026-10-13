@@ -1,22 +1,11 @@
-# Mili OCR and attachment routing
+# Mili Sheets and Documents — Operator Notes
 
-Only Mili receives `mili_attachment_list` and `mili_attachment_read`. Tools bind to the host-provided conversation session key and cannot list or read another conversation's catalog entries. No send tool, shell tool, credentials or external OCR service is added.
+Manual table schema registration removed on 2026-10-13. Current runtime uses gdrive/table-tools.js: inspect_table discovers live header fields and automatically snapshots the existing title/header values; write_table_records maps objects keyed by those fields and selects rows. initialize_table creates a tab or initializes a completely blank, unformatted tab once. Existing headers/templates/formulas remain immutable. Newly created workbooks join protection automatically. Private snapshots live outside Mili's workspace in gdrive/table-state.json; never publish them.
 
-Received WhatsApp media facts (never paths parsed from message text) are copied into Mili's workspace `attachments/inbound/`. A private operator-owned catalog lives outside that workspace. Source and destination paths are checked using realpath, bounded at 20 MiB, and symlink escapes are rejected. The prompt hook injects exact IDs and paths; ordinary file reads of guessed media paths and `file://` web fetches are blocked.
+Existing original reference workbook, Reference Lists and dedicated expense ledgers retain protection. Existing legacy supplier/price definitions are type/history validators, not a list limiting writable tables. Mili's attachment plugin blocks raw Sheet mutations and broad account scans. Backend rejects raw mutation/file-replacement routes on protected workbooks; named-field writes use RAW literals, target-only updates and full readback. Same-server writes serialize; human edits and other direct Google clients are detected during preflight/readback but are not part of a Google cross-client transaction.
 
-Requirements: Node 24, `file`, `pdfinfo`, `pdftotext`, `pdftoppm`, and Tesseract with English language data. All are already installed on this machine. OCR is local CPU work, limited to two OpenMP threads. Each command has a timeout and bounded output. Images/scanned PDF pages use Tesseract; each PDF page first attempts text extraction. PDF reads process up to five pages at a time; `nextPage`/`start_page` supports the remaining pages. OCR results are untrusted evidence; critical digits/table columns need verification.
+Mili attachments: only trusted host-routed media is staged, conversation catalog isolation retained. DOCX/XLSX/PPTX/OpenDocument extraction is local bounded ZIP/XML; legacy DOC/XLS/PPT/RTF uses installed LibreOffice with macros disabled in an isolated profile. PDF/image OCR uses Poppler/Tesseract. Source size 20 MiB; expanded Office size 40 MiB/10000 entries; output 40000 characters/5 PDF pages per call, with continuation. Office embedded images require separately readable images/PDF for OCR; spreadsheet values are cached/raw, not recalculated. Corrupt/encrypted documents fail explicitly.
 
-Configuration: enable this plugin in `plugins.allow`, `plugins.entries` and `plugins.load.paths`; grant its `hooks.allowConversationAccess=true`; add its two tools to Mili's allowlist; enable `channels.whatsapp.accounts.default.pluginHooks.messageReceived=true`. The handler ignores every non-Mili session. Enabling channel hooks broadcasts inbound metadata to enabled local plugins, so retain the current trusted plugin allowlist. A gateway restart is required after changing plugin code or registration permissions; normal channel hot reload alone cannot register a previously denied prompt hook.
+Checks: node table-tools.test.js; node tracker-guard.test.js; node crud.test.js; node expense-guard.test.js in gdrive. In mili-attachments: node index.test.js; python3 document.test.py; node document.integration.test.js. OCR integration accepts MILI_OCR_TEST_PDF. Behavior-only runs follow OPENCLAW_AGENT_DRY_RUN_SOP.md; no delivery or message tests.
 
-Checks without channel delivery:
-
-```bash
-node index.test.js
-MILI_OCR_TEST_PDF=/absolute/path/to/authorized/local.pdf node ocr.integration.test.js
-```
-
-The integration test creates a temporary image-only PDF from an authorized local PDF, checks image OCR and scan OCR, and removes only its own temporary directory. No WhatsApp message is sent.
-
-The paired Google server `tracker-guard.js` is independent of agent prompts. It protects the original reference workbook and the registered working tracker, validates table/grid/header identity and duplicates, permits RAW data values only, preserves existing quote history, serializes guarded writes within the server, and reads back every written cell before returning verified success. Human edits/other direct API clients are outside its lock: it detects changes during preflight and fails on verification mismatch, but Google values writes are not a cross-client transaction. Existing ambiguous/duplicate records remain blocked until an operator reconciles them; the guard never deletes them.
-
-Private catalogs, attachments, transcripts, tokens, operational backups and live config must never be synced to the public Markdown backup repository.
+After code/tool allowlist changes restart openclaw-gateway.service and verify registered tools/health. Never sync catalogs, table-state.json, transcripts, tokens, received documents, live config or private memory to public backup. Publish only sanitized instructions/source.

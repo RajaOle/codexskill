@@ -6,3 +6,5 @@ gdrive-token.json
 credentials*.json
 token*.json
 *.log
+table-state.json
+table-state.json.*

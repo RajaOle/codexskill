@@ -83,3 +83,13 @@ npm run refresh-token
 ```
 
 For production, run this as a periodic systemd timer or before restarting OpenClaw to catch revoked tokens early.
+
+## Mili tables and documents (2026-10-13)
+
+`inspect_table` automatically discovers live headers; no manual table registration. `initialize_table` creates a new tab or initializes an entirely blank/unformatted tab once. Existing template/header values, formatting and formulas stay protected. `write_table_records` accepts exact-header-keyed objects, maps fields and selects rows, supports idempotent insert/upsert, checks dropdowns/concurrent edits and verifies results. Original references and dedicated expense ledgers retain their guards. Newly created workbooks are protected automatically. Raw mutation/file replacement routes cannot bypass protection.
+
+Public backup redacts live workbook IDs. Set `MILI_TEMPLATE_ID`, `MILI_TRACKER_ID`, `MILI_SINDY_ID`, `MILI_IBNU_ID` to actual local workbook IDs before deployment. Keep `GDRIVE_TABLE_STATE_PATH` outside the repository (default: installed private gdrive directory); never publish snapshots or runtime state. Install the paired `openclaw-local-plugins/mili-attachments` reader and set `MILI_DOCUMENT_READER` to its absolute index.js path when using a different home/layout.
+
+`read_document` extracts exact Drive PDFs/images, Office/OpenDocument and text locally. `read_file(content=true)` automatically extracts supported Office documents. Reader requires Python 3, file, Poppler/Tesseract and LibreOffice for legacy DOC/XLS/PPT/RTF. DOCX/XLSX/PPTX/OpenDocument need no additional Python packages. Embedded Office images are not OCRed directly; spreadsheet formula values are cached, not recalculated. Chunks expose page/character continuation. Macros are not executed.
+
+Run `node table-tools.test.js`, `node tracker-guard.test.js`, `node expense-guard.test.js`, `node crud.test.js`. Use the paired reader tests for extraction/OCR. No live delivery tests.

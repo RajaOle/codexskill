@@ -3,20 +3,18 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { google } from "googleapis";
 import { readFileSync, writeFileSync, createReadStream } from "fs";
+import { Readable } from "stream";
+import { crudTools, handleCrudTool } from "./crud.js";
+import { blockProtectedMutation } from "./tracker-guard.js";
+import { blockExpenseMutation, recordExpense } from "./expense-guard.js";
+import { TableGuard, tableTools } from "./table-tools.js";
 
-function requiredEnv(name) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is required. Point it to a local Google OAuth JSON file outside git.`);
-  }
-  return value;
-}
+const tableGuard = new TableGuard();
 
-const credentialsPath = requiredEnv("GDRIVE_CREDENTIALS_PATH");
-const tokenPath = requiredEnv("GDRIVE_TOKEN_PATH");
-const credentials = JSON.parse(readFileSync(credentialsPath, "utf8"));
+const credentials = JSON.parse(readFileSync(process.env.GDRIVE_CREDENTIALS_PATH));
 const { client_id, client_secret, redirect_uris } = credentials.installed || credentials.web;
-const token = JSON.parse(readFileSync(tokenPath, "utf8"));
+const tokenPath = process.env.GDRIVE_TOKEN_PATH;
+const token = JSON.parse(readFileSync(tokenPath));
 
 const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 oAuth2Client.setCredentials(token);
@@ -25,9 +23,8 @@ oAuth2Client.on("tokens", (tokens) => {
   if (!nextToken.refresh_token && token.refresh_token) {
     nextToken.refresh_token = token.refresh_token;
   }
-  writeFileSync(tokenPath, JSON.stringify(nextToken, null, 2), { mode: 0o600 });
+  writeFileSync(tokenPath, JSON.stringify(nextToken, null, 2));
 });
-
 const drive = google.drive({ version: "v3", auth: oAuth2Client });
 const sheets = google.sheets({ version: "v4", auth: oAuth2Client });
 
@@ -35,21 +32,38 @@ function formatError(error) {
   const googleError = error?.response?.data?.error || error?.code;
   const googleDescription = error?.response?.data?.error_description;
   if (googleError === "deleted_client") {
-    return "Google Drive authentication failed: OAuth client was deleted in Google Cloud. Create a new OAuth Desktop client, replace the credentials JSON, then run npm run auth again.";
+    return "Google Drive authentication failed: OAuth client in gdrive-credentials.json was deleted in Google Cloud. Create a new OAuth Desktop client, replace gdrive-credentials.json, then run auth.js again.";
   }
   if (googleError === "invalid_grant") {
-    return "Google Drive authentication failed: refresh token is invalid or revoked. Run npm run auth again with the current credentials JSON.";
+    return "Google Drive authentication failed: refresh token is invalid or revoked. Run auth.js again with the current gdrive-credentials.json.";
   }
   return `Google Drive MCP error: ${googleDescription || error?.message || String(error)}`;
 }
 
-const server = new Server(
-  { name: "gdrive", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
+const server = new Server({ name: "gdrive", version: "1.0.0" }, {
+  capabilities: { tools: {} }
+});
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
+    ...crudTools,
+    ...tableTools,
+    {
+      name: "record_expense",
+      description: "Safely record one complete expense or credit in a registered petty-cash ledger. Backend selects a data row below the immutable header, preserves formulas/format, blocks duplicates, and verifies the balance. Never supply row/range or use raw sheet mutations for this ledger.",
+      inputSchema: {
+        type: "object", additionalProperties: false,
+        properties: {
+          fileId: {type: "string"}, sheetName: {type: "string"},
+          date: {type: "string", description: "Verified YYYY-MM-DD"},
+          description: {type: "string"}, category: {type: "string"},
+          credit: {type: "number", description: "Numeric IDR, zero for an expense"},
+          debit: {type: "number", description: "Numeric IDR, zero for a credit"},
+          receiptUrl: {type: "string", description: "Existing Drive receipt URL"}
+        },
+        required: ["fileId", "sheetName", "date", "description", "category", "credit", "debit", "receiptUrl"]
+      }
+    },
     {
       name: "list_files",
       description: "List or search files in Google Drive.",
@@ -67,35 +81,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "read_sheet_range",
-      description: "Read a specific range from a Google Sheet e.g. Sheet1!A1:Z100.",
-      inputSchema: {
-        type: "object",
-        properties: { fileId: { type: "string" }, range: { type: "string" } },
-        required: ["fileId", "range"]
-      }
+      description: "Read a specific range from a Google Sheet e.g. Sheet1!A1:Z100",
+      inputSchema: { type: "object", properties: { fileId: { type: "string" }, range: { type: "string" } }, required: ["fileId", "range"] }
     },
     {
       name: "read_sheet_formula_range",
       description: "Read formulas from a specific Google Sheet range. Formula cells are returned as formulas; literal cells are returned as values.",
-      inputSchema: {
-        type: "object",
-        properties: { fileId: { type: "string" }, range: { type: "string" } },
-        required: ["fileId", "range"]
-      }
+      inputSchema: { type: "object", properties: { fileId: { type: "string" }, range: { type: "string" } }, required: ["fileId", "range"] }
     },
     {
       name: "write_sheet",
-      description: "Write or append data to a Google Sheet. Use to update cells or append rows.",
+      description: "Write/append data to a Google Sheet. Use to update cells or append new rows.",
       inputSchema: {
         type: "object",
         properties: {
           fileId: { type: "string", description: "Spreadsheet ID" },
           range: { type: "string", description: "Range like Sheet1!A2:E2" },
-          values: {
-            type: "array",
-            description: "2D array of values e.g. [[col1, col2, col3]]",
-            items: { type: "array" }
-          },
+          values: { type: "array", description: "2D array of values e.g. [[col1, col2, col3]]", items: { type: "array" } },
           append: { type: "boolean", description: "If true, append rows instead of overwrite" }
         },
         required: ["fileId", "range", "values"]
@@ -116,7 +118,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "upload_file",
-      description: "Upload a local file to a Google Drive folder. Returns the file ID and shareable link.",
+      description: "Upload a local file to Google Drive folder. Returns the file ID and shareable link.",
       inputSchema: {
         type: "object",
         properties: {
@@ -137,7 +139,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 async function handleTool(req) {
-  const { name, arguments: args = {} } = req.params;
+  const { name, arguments: args } = req.params;
+  blockProtectedMutation(name, args);
+  blockExpenseMutation(name, args);
+  const tableResult = await tableGuard.handle(name, args, sheets);
+  if (tableResult) return tableResult;
+  tableGuard.block(name, args);
+  if (name === "record_expense") return recordExpense(args, sheets);
+  const crudResult = await handleCrudTool(name, args, { drive, sheets });
+  if (crudResult) {
+    if (name === 'create_spreadsheet') {
+      const created = JSON.parse(crudResult.content[0].text);
+      if (created.spreadsheetId) tableGuard.adopt(created.spreadsheetId);
+    }
+    return crudResult;
+  }
 
   if (name === "auth_status") {
     await oAuth2Client.getAccessToken();
@@ -156,7 +172,7 @@ async function handleTool(req) {
   if (name === "list_files") {
     let q = args.query || "";
     if (q && !q.includes("contains") && !q.includes("=") && !q.includes("'")) {
-      q = `name contains '${q.replaceAll("'", "\\'")}'`;
+      q = `name contains '${q}'`;
     }
     const res = await drive.files.list({
       q: q || undefined,
@@ -168,16 +184,16 @@ async function handleTool(req) {
 
   if (name === "read_sheet") {
     const meta = await sheets.spreadsheets.get({ spreadsheetId: args.fileId });
-    const sheetNames = meta.data.sheets.map((s) => s.properties.title);
+    const sheetNames = meta.data.sheets.map(s => s.properties.title);
     let output = "";
     for (const sheetName of sheetNames) {
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: args.fileId,
-        range: sheetName
+        range: sheetName,
       });
       const rows = res.data.values || [];
       output += `\n=== Sheet: ${sheetName} ===\n`;
-      output += rows.map((row) => row.join("\t")).join("\n");
+      output += rows.map(row => row.join("\t")).join("\n");
       output += "\n";
     }
     return { content: [{ type: "text", text: output }] };
@@ -186,20 +202,20 @@ async function handleTool(req) {
   if (name === "read_sheet_range") {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: args.fileId,
-      range: args.range
+      range: args.range,
     });
     const rows = res.data.values || [];
-    return { content: [{ type: "text", text: rows.map((row) => row.join("\t")).join("\n") }] };
+    return { content: [{ type: "text", text: rows.map(row => row.join("\t")).join("\n") }] };
   }
 
   if (name === "read_sheet_formula_range") {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: args.fileId,
       range: args.range,
-      valueRenderOption: "FORMULA"
+      valueRenderOption: "FORMULA",
     });
     const rows = res.data.values || [];
-    return { content: [{ type: "text", text: rows.map((row) => row.join("\t")).join("\n") }] };
+    return { content: [{ type: "text", text: rows.map(row => row.join("\t")).join("\n") }] };
   }
 
   if (name === "write_sheet") {
@@ -224,10 +240,10 @@ async function handleTool(req) {
   if (name === "duplicate_sheet") {
     const meta = await sheets.spreadsheets.get({ spreadsheetId: args.fileId });
     const sheetList = meta.data.sheets || [];
-    const sourceSheet = sheetList.find((s) => s.properties.title === args.sourceSheetName)
-      || sheetList.find((s) => s.properties.title.toLowerCase() === args.sourceSheetName.toLowerCase());
-    const existingTarget = sheetList.find((s) => s.properties.title === args.targetSheetName)
-      || sheetList.find((s) => s.properties.title.toLowerCase() === args.targetSheetName.toLowerCase());
+    const sourceSheet = sheetList.find(s => s.properties.title === args.sourceSheetName)
+      || sheetList.find(s => s.properties.title.toLowerCase() === args.sourceSheetName.toLowerCase());
+    const existingTarget = sheetList.find(s => s.properties.title === args.targetSheetName)
+      || sheetList.find(s => s.properties.title.toLowerCase() === args.targetSheetName.toLowerCase());
 
     if (!sourceSheet) {
       throw new Error(`Source sheet not found: ${args.sourceSheetName}`);
@@ -271,31 +287,25 @@ async function handleTool(req) {
     const res = await drive.files.create({
       requestBody: {
         name: args.fileName,
-        parents: args.folderId ? [args.folderId] : undefined
+        parents: args.folderId ? [args.folderId] : undefined,
       },
       media: {
         mimeType: args.mimeType || "application/octet-stream",
-        body: fileStream
+        body: fileStream,
       },
       fields: "id,name,webViewLink"
     });
-
+    // Make it accessible via link
     await drive.permissions.create({
       fileId: res.data.id,
       requestBody: { role: "reader", type: "anyone" }
     });
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({ id: res.data.id, name: res.data.name, link: res.data.webViewLink })
-      }]
-    };
+    return { content: [{ type: "text", text: JSON.stringify({ id: res.data.id, name: res.data.name, link: res.data.webViewLink }) }] };
   }
 
   if (name === "get_folder_id") {
-    const safeFolderName = args.folderName.replaceAll("'", "\\'");
     const res = await drive.files.list({
-      q: `name contains '${safeFolderName}' and mimeType = 'application/vnd.google-apps.folder'`,
+      q: `name contains '${args.folderName}' and mimeType = 'application/vnd.google-apps.folder'`,
       fields: "files(id,name)",
       pageSize: 5
     });
