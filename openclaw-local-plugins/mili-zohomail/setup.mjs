@@ -34,12 +34,13 @@ export function createSetupHandler({fetcher=fetch,root=PRIVATE_ROOT,publicOrigin
     const authHosts=Object.values(REGIONS).map(([host])=>'https://'+host).join(' ');
     // no-referrer causes Origin:null on ordinary browser form POSTs. Same-origin
     // retains CSRF origin checks while suppressing cross-site callback referrers.
-    const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'same-origin','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self' "+authHosts+"; frame-ancestors 'none'; base-uri 'none'"};
+    const headers={'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'same-origin','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; connect-src 'self'; style-src 'unsafe-inline'; form-action 'self' "+authHosts+"; frame-ancestors 'none'; base-uri 'none'"};
     const reply=(status,html)=>{res.writeHead(status,headers);res.end(html);};
     const isPublic=Boolean(publicHost&&req.headers.host===publicHost);
     if(!isPublic&&req.headers.host!=='localhost:'+PORT&&req.headers.host!=='127.0.0.1:'+PORT)return reply(403,'Invalid host.');
     const url=new URL(req.url,ORIGIN);
     try {
+      if(req.method==='GET'&&url.pathname==='/.well-known/appspecific/com.chrome.devtools.json')return reply(204,'');
       if(req.method==='GET'&&url.pathname==='/open'&&!isPublic&&publicOrigin) {
         res.writeHead(303,{...headers,'Referrer-Policy':'no-referrer',Location:publicOrigin+'/setup?key='+accessKey});res.end();return;
       }
@@ -53,11 +54,15 @@ export function createSetupHandler({fetcher=fetch,root=PRIVATE_ROOT,publicOrigin
       if(req.method==='GET'&&url.pathname==='/')return reply(200,setupPage(csrf,{homepage,redirect}));
       if(req.method==='POST'&&url.pathname==='/connect') {
         const expectedOrigin=isPublic?publicOrigin:'http://'+req.headers.host;
-        if(req.headers.origin!==expectedOrigin)return reply(403,'Invalid origin. Reload setup in the same browser using its exact HTTPS or localhost URL.');
+        // Chrome can send an opaque Origin from a stale no-referrer document.
+        // Fetch Metadata is browser-controlled; require same-origin AND the
+        // existing CSRF proof below. Never allow an explicit foreign Origin.
+        const opaqueOrigin=(req.headers.origin===undefined||req.headers.origin==='null')&&req.headers['sec-fetch-site']==='same-origin';
+        if(req.headers.origin!==expectedOrigin&&!opaqueOrigin)return reply(403,'Invalid origin. <a href="/">Reload setup here</a>, then submit again from the new page.');
         if(busy)return reply(409,'A connection attempt is already in progress.');
         let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>6000)return reply(413,'Form too large.');}
         const form=new URLSearchParams(raw);
-        if(!equal(form.get('csrf'),csrf))return reply(403,'Invalid setup session. Reload local page.');
+        if(!equal(form.get('csrf'),csrf))return reply(403,'Setup page expired after restart. <a href="/">Reload setup here</a> and enter the client details again.');
         const c=Object.fromEntries(['region','mailbox','clientId','clientSecret'].map(k=>[k,form.get(k)?.trim()]));
         if(!REGIONS[c.region]||c.mailbox!=='sindy@example.com'||!c.clientId||!c.clientSecret||c.clientId.length>300||c.clientSecret.length>500)return reply(400,'Invalid client details or mailbox.');
         const state=randomBytes(32).toString('hex');pending={...c,state,expires:Date.now()+10*60*1000};

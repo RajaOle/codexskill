@@ -157,11 +157,20 @@ test('HTTPS setup requires private cookie, exact origin and stable public redire
   assert(entry.headers['Set-Cookie'].includes('HttpOnly; Secure; SameSite=Lax'));
   const cookie=entry.headers['Set-Cookie'].split(';')[0];
   const page=await request('GET','/','',{cookie});assert.equal(page.status,200);
+  assert(page.headers['Content-Security-Policy'].includes("connect-src 'self'"));
   assert(page.body.includes('https://example.com'));assert(page.body.includes(publicOrigin+'/callback'));
   const csrf=/name="csrf" value="([^"]+)"/.exec(page.body)[1];
   const form=new URLSearchParams({csrf,region:'com',mailbox:'sindy@example.com',clientId:'test-client',clientSecret:'test-secret'}).toString();
   assert.equal((await request('POST','/connect',form,{cookie,origin:'null'})).status,403);
   assert.equal((await request('POST','/connect',form,{cookie,origin:'https://evil.example'})).status,403);
+  for(const origin of ['null',undefined]) {
+    assert.equal((await request('POST','/connect',form,{cookie,origin,'sec-fetch-site':'cross-site'})).status,403);
+    assert.equal((await request('POST','/connect',form.replace(csrf,'stale'),{cookie,origin,'sec-fetch-site':'same-origin'})).status,403);
+    assert.equal((await request('POST','/connect',form,{cookie,origin,'sec-fetch-site':'same-origin'})).status,303);
+  }
+  assert.equal((await request('POST','/connect',form,{cookie,origin:'https://evil.example','sec-fetch-site':'same-origin'})).status,403);
+  const devtools=await request('GET','/.well-known/appspecific/com.chrome.devtools.json');
+  assert.equal(devtools.status,204);assert.equal(devtools.body,'');
   const result=await request('POST','/connect',form,{cookie});assert.equal(result.status,303);
   assert.equal(new URL(result.headers.Location).searchParams.get('redirect_uri'),publicOrigin+'/callback');
   assert(!result.headers.Location.includes('test-secret'));
