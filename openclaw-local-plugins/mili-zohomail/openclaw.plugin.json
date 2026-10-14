@@ -1,0 +1,1 @@
+{"id":"mili-zohomail","name":"Mili Zoho Mail","description":"Sindy mailbox CRUD for verified Mili users; private OAuth and reversible deletion.","configSchema":{"type":"object","properties":{},"additionalProperties":false}}

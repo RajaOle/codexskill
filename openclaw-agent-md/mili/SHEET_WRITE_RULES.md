@@ -33,4 +33,4 @@ Complete authorized internal work immediately. No repeated “mau saya?” or ma
 
 ## Pending follow-up details
 
-Record a verified user's general follow-up instruction locally even when individual recipients are still unknown. Ask once for the missing recipients/contact details; never assign a group-level plan to arbitrary rows. No email-send tool is available: prepare drafts, and distinguish draft preparation from actual delivery.
+Record a verified user's general follow-up instruction locally even when individual recipients are still unknown. Ask once for the missing recipients/contact details; never assign a group-level plan to arbitrary rows. For mailbox operations read ZOHO_MAIL.md and verify mili_mail_status. Prepare drafts and distinguish draft preparation from acknowledged sending; OAuth may still need setup.
