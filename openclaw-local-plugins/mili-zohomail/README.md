@@ -18,4 +18,14 @@ Plugin registration: add directory to plugins.load.paths, allow/enable mili-zoho
 
 Tests: `node index.test.js` (mocked network only, no live delivery). Actual mailbox connection and provider compatibility need OAuth plus a read-only status check. Existing draft bodies and attachments are not implemented. No scheduler.
 
+## HTTPS callback through Cloudflare Tunnel
+
+Installed homepage: https://example.com. Callback: https://oauth.example.com/callback. Set these exact URLs in the existing Zoho Server-based Application. Set MILI_ZOHO_PUBLIC_ORIGIN=https://oauth.example.com and MILI_ZOHO_HOMEPAGE=https://example.com in the setup service. The process still listens only on 127.0.0.1:18891. A dedicated named tunnel maps only the OAuth hostname to this service and returns 404 for unmatched hostnames; main website and other tunnels are unaffected.
+
+Open http://localhost:18891/open on the MiniPC. It redirects through a private setup link to HTTPS, establishes an HttpOnly/Secure/SameSite cookie, then removes the access key from the visible URL. Public visitors cannot fetch or submit the credential form without this private session. Callback requests need the pending random OAuth state, not the setup cookie. Never publish setup-access.json or the private setup URL. Local setup at http://localhost:18891/ also works with the HTTPS callback.
+
+The form document uses Referrer-Policy: same-origin; no-referrer can make browser form POSTs send Origin:null, causing the earlier Invalid origin rejection. Key-bearing redirects retain no-referrer. Exact Host/Origin and CSRF validation stay enabled. CSP permits form redirects only to self and known Zoho account hosts.
+
+Services: mili-zoho-setup.service and cloudflared-mili-oauth.service are enabled for user startup. Setup changes require restarting only the setup service; Mili's gateway/mail tools need no restart for callback-only changes. Tunnel credential and account certificate stay private under ~/.cloudflared. Tunnel config under ~/.config/cloudflared-mili-oauth contains the locally assigned tunnel ID and credential path; never sync runtime credentials or setup keys to GitHub.
+
 API references: [OAuth](https://www.zoho.com/mail/help/api/using-oauth-2.html), [Drafts](https://www.zoho.com/mail/help/api/post-save-draft-template.html), [Search](https://www.zoho.com/mail/help/api/get-search-emails.html), [Move](https://www.zoho.com/mail/help/api/move-email.html).

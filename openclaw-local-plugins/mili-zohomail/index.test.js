@@ -126,6 +126,8 @@ test('OAuth setup blocks hostile Host/Origin/state and saves only verified mailb
     assert.equal((await request('POST','/connect','',{origin:'https://evil.example'})).status,403);
     assert.equal((await request('GET','/callback?state=forged&code=fake')).status,403);
     const page=await request('GET','/');const csrf=/name="csrf" value="([^"]+)"/.exec(page.body)[1];
+    assert.equal(page.headers['Referrer-Policy'],'same-origin');
+    assert(page.headers['Content-Security-Policy'].includes("form-action 'self' https://accounts.zoho.com"));
     const form=new URLSearchParams({csrf,region:'com',mailbox:'sindy@example.com',clientId:'test-client',clientSecret:'test-secret'});
     assert.equal((await request('POST','/connect',form.toString().replace(csrf,'forged'))).status,403);
     const redirect=await request('POST','/connect',form.toString());assert.equal(redirect.status,303);
@@ -136,4 +138,31 @@ test('OAuth setup blocks hostile Host/Origin/state and saves only verified mailb
     const saved=readPrivate(path.join(root,'credentials.json'));assert.equal(saved.accountId,accountId);assert.equal(saved.mailbox,'sindy@example.com');
     assert.equal((await request('GET','/callback?state='+state+'&code=test-code')).status,403);
   } finally {await rm(root,{recursive:true,force:true});}
+});
+test('HTTPS setup requires private cookie, exact origin and stable public redirect',async()=>{
+  const accessKey='a'.repeat(64),publicOrigin='https://oauth.example.com';
+  const handler=createSetupHandler({publicOrigin,homepage:'https://example.com',accessKey,fetcher:()=>{throw new Error('Network must not run');}});
+  const request=async(method,url,body='',headers={})=>{
+    const req=Readable.from([body]);Object.assign(req,{method,url,headers:{host:'oauth.example.com',origin:publicOrigin,...headers}});
+    const result={};await handler(req,{writeHead:(status,headers)=>Object.assign(result,{status,headers}),end:body=>{result.body=body;}});return result;
+  };
+  const localLaunch=await request('GET','/open','',{host:'localhost:18891'});
+  assert.equal(localLaunch.status,303);
+  assert.equal(localLaunch.headers.Location,publicOrigin+'/setup?key='+accessKey);
+  assert.equal(localLaunch.headers['Referrer-Policy'],'no-referrer');
+  assert.equal((await request('GET','/')).status,403);
+  assert.equal((await request('GET','/setup?key=wrong')).status,403);
+  const entry=await request('GET','/setup?key='+accessKey);assert.equal(entry.status,303);
+  assert.equal(entry.headers['Referrer-Policy'],'no-referrer');
+  assert(entry.headers['Set-Cookie'].includes('HttpOnly; Secure; SameSite=Lax'));
+  const cookie=entry.headers['Set-Cookie'].split(';')[0];
+  const page=await request('GET','/','',{cookie});assert.equal(page.status,200);
+  assert(page.body.includes('https://example.com'));assert(page.body.includes(publicOrigin+'/callback'));
+  const csrf=/name="csrf" value="([^"]+)"/.exec(page.body)[1];
+  const form=new URLSearchParams({csrf,region:'com',mailbox:'sindy@example.com',clientId:'test-client',clientSecret:'test-secret'}).toString();
+  assert.equal((await request('POST','/connect',form,{cookie,origin:'null'})).status,403);
+  assert.equal((await request('POST','/connect',form,{cookie,origin:'https://evil.example'})).status,403);
+  const result=await request('POST','/connect',form,{cookie});assert.equal(result.status,303);
+  assert.equal(new URL(result.headers.Location).searchParams.get('redirect_uri'),publicOrigin+'/callback');
+  assert(!result.headers.Location.includes('test-secret'));
 });
