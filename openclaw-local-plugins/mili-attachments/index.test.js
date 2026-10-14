@@ -40,3 +40,21 @@ test('raw Sheet mutations blocked for Mili; safe creation/record tools allowed',
   for(const name of ['gdrive__initialize_table','gdrive__inspect_table','gdrive__write_table_records','gdrive__read_document'])assert.equal(hooks.before_tool_call({toolName:name,params:{}},{agentId:'mili'}),undefined);
   assert.equal(hooks.before_tool_call({toolName:'gdrive__list_files',params:{query:"modifiedTime > '2026-10-12T00:00:00'"}},{agentId:'mili'}).block,true);
 });
+test('binary create_file cannot upload a path string; original byte tool remains allowed',()=>{
+  const hooks={};plugin.register({registerTool:()=>{},on:(n,f)=>{hooks[n]=f;},logger:{warn:()=>{}}});
+  assert.equal(hooks.before_tool_call({toolName:'gdrive__create_file',params:{mimeType:'image/jpeg',content:'/home/user/flyer.jpg'}},{agentId:'mili'}).block,true);
+  assert.equal(hooks.before_tool_call({toolName:'gdrive__create_file',params:{mimeType:'text/plain',content:'real notes'}},{agentId:'mili'}),undefined);
+  assert.equal(hooks.before_tool_call({toolName:'mili_drive_upload',params:{}},{agentId:'mili'}),undefined);
+});
+test('trusted arbitrary binary attachments are cataloged even without OCR support',async()=>{
+  const temp=await mkdtemp(path.join(os.tmpdir(),'mili-any-file-test-'));
+  try {
+    const cfg={workspace:path.join(temp,'workspace'),inbound:path.join(temp,'inbound'),state:path.join(temp,'state')};
+    await mkdir(cfg.workspace);await mkdir(cfg.inbound);
+    const file=path.join(cfg.inbound,'package.custom');await writeFile(file,Buffer.from([0,255,1,2]));
+    const ctx={channelId:'whatsapp',sessionKey:'agent:mili:whatsapp:group:owned',agentId:'mili'};
+    await captureMedia({media:[{path:file}]},ctx,cfg);
+    const list=JSON.parse((await makeTools(ctx,cfg)[0].execute()).content[0].text);
+    assert.equal(list.attachments[0].name,'package.custom');
+  } finally {await rm(temp,{recursive:true,force:true});}
+});

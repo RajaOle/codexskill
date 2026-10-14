@@ -55,6 +55,8 @@ export const crudTools = [
 
 const result = data => ({ content: [{ type: "text", text: JSON.stringify(data, null, 2) }] });
 const fileFields = "id,name,mimeType,parents,webViewLink,trashed,capabilities";
+const inlineTextMime = mime => /^(?:text\/|application\/(?:json|xml)$)/i.test(mime||'text/plain');
+const misleadingBinaryPath = args => /\.(?:jpe?g|png|pdf|docx?|xlsx?|pptx?|zip)$/i.test(args.name||'') && typeof args.content==='string' && /^(?:\/home\/|\/tmp\/|file:\/\/)[^\r\n]+$/.test(args.content.trim());
 
 export async function handleCrudTool(name, args, { drive, sheets }) {
   const definition = crudTools.find(item => item.name === name);
@@ -67,6 +69,7 @@ export async function handleCrudTool(name, args, { drive, sheets }) {
     return result(res.data);
   }
   if (name === "create_file") {
+    if(args.content!==undefined && (typeof args.content!=='string'||!inlineTextMime(args.mimeType)||misleadingBinaryPath(args)))throw new Error('create_file supports inline text only. For binary files use the enabled attachment upload tool; never supply a local path as content.');
     const res = await drive.files.create({
       requestBody: { name: args.name, mimeType: args.mimeType || "text/plain", parents: args.folderId ? [args.folderId] : undefined },
       ...(args.content !== undefined ? { media: { mimeType: args.mimeType || "text/plain", body: Readable.from([args.content]) } } : {}),
@@ -98,6 +101,11 @@ export async function handleCrudTool(name, args, { drive, sheets }) {
   }
   if (name === "update_file") {
     if (args.name === undefined && args.folderId === undefined && args.content === undefined) throw new Error("Provide name, folderId, or content to update.");
+    if(args.content!==undefined) {
+      if(typeof args.content!=='string'||!inlineTextMime(args.mimeType)||misleadingBinaryPath(args))throw new Error('update_file accepts inline text only; upload original binary bytes with the attachment tool.');
+      const original=await drive.files.get({fileId:args.fileId,fields:'mimeType',supportsAllDrives:true});
+      if(!inlineTextMime(original.data.mimeType))throw new Error('Existing binary file cannot be replaced with inline text/path content. Upload the requested original separately.');
+    }
     let parents;
     if (args.folderId) {
       const meta = await drive.files.get({ fileId: args.fileId, fields: "parents", supportsAllDrives: true });

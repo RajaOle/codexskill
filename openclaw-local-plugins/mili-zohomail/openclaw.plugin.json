@@ -1,1 +1,28 @@
-{"id":"mili-zohomail","name":"Mili Zoho Mail","description":"Sindy mailbox CRUD for verified Mili users; private OAuth and reversible deletion.","activation":{"onStartup":true},"enabledByDefault":false,"contracts":{"tools":["mili_mail_status","mili_mail_folders","mili_mail_search","mili_mail_read","mili_mail_draft","mili_mail_send","mili_mail_update","mili_mail_trash"]},"configSchema":{"type":"object","properties":{},"additionalProperties":false}}
+{
+  "id": "mili-zohomail",
+  "name": "Mili Zoho Mail",
+  "description": "Sindy mailbox CRUD for verified Mili users; private OAuth and reversible deletion.",
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": false,
+  "contracts": {
+    "tools": [
+      "mili_mail_status",
+      "mili_mail_folders",
+      "mili_mail_search",
+      "mili_mail_read",
+      "mili_mail_draft",
+      "mili_mail_send",
+      "mili_mail_attachments",
+      "mili_mail_attachment_to_drive",
+      "mili_mail_update",
+      "mili_mail_trash"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

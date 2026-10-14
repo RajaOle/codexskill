@@ -1,6 +1,6 @@
 # Mili Zoho Mail
 
-OpenClaw plugin for one primary Zoho mailbox. Eight tools provide connection status, folders, search, email content, draft creation, approved plaintext sending, read/unread/archive/move updates and reversible Trash deletion. No organization administration or permanent purge. No third-party packages required; Node 22+ with JSON.rawJSON.
+OpenClaw plugin for one primary Zoho mailbox. Ten tools provide connection status, folders, search, email content, draft creation, approved plaintext sending, read/unread/archive/move updates and reversible Trash deletion. No organization administration or permanent purge. Mail transport uses Node 22+ with JSON.rawJSON and the paired mili-attachments/files.js resolver. Drive sources reuse the installed Google MCP dependencies.
 
 Only Mili receives tools. Every execution checks runtime requesterSenderId against private authorized-users.json; tool arguments cannot set sender identity. OAuth credential is kept outside agent workspace. Each token refresh verifies the expected primary ZOHO_ACCOUNT mailbox, then fixes every request to that account. HTTPS endpoints come from a fixed region map; arbitrary URLs and account IDs are never accepted. IDs retain integer precision. Redirects and automatic network retries are disabled. Draft/send operations use durable request IDs to suppress concurrent/restart retries; uncertain outcomes require inspection.
 
@@ -14,9 +14,9 @@ Create authorized-users.json locally with senderIds copied from the verified loc
 
 Run `node setup.mjs`; visit http://localhost:18891. Create a Zoho Server-based Application using redirect http://localhost:18891/callback. Enter client details locally, select the matching data centre and authorize as the intended mailbox owner. Setup verifies the primary mailbox before saving. It sends no email. The installed local setup page is pinned to the intended mailbox; public backup replaces that address with an example address. Update that pin locally for deployment.
 
-Plugin registration: add directory to plugins.load.paths, allow/enable mili-zohomail, and add the eight mili_mail_* names from index.js to Mili's tool allowlist. Refresh the persisted registry with `openclaw plugins registry --refresh`, then restart gateway after installation; OAuth completion later needs no restart. Setup UI binds loopback, checks Host/Origin/CSRF/state, expires pending authorization after ten minutes and never logs submitted secrets.
+Plugin registration: add directory to plugins.load.paths, allow/enable mili-zohomail, and add the ten mili_mail_* names from index.js to Mili's tool allowlist. Refresh the persisted registry with `openclaw plugins registry --refresh`, then restart gateway after installation; OAuth completion later needs no restart. Setup UI binds loopback, checks Host/Origin/CSRF/state, expires pending authorization after ten minutes and never logs submitted secrets.
 
-Tests: `node index.test.js` (mocked network only, no live delivery). Actual mailbox connection and provider compatibility need OAuth plus a read-only status check. Existing draft bodies and attachments are not implemented. No scheduler.
+Tests: `node index.test.js` (mocked network only, no live delivery). Actual mailbox connection and provider compatibility need OAuth plus a read-only status check. Existing draft body editing is not implemented. File attachments are supported. No scheduler.
 
 ## HTTPS callback through Cloudflare Tunnel
 
@@ -29,3 +29,9 @@ The form document uses Referrer-Policy: same-origin; no-referrer can make browse
 Services: mili-zoho-setup.service and cloudflared-mili-oauth.service are enabled for user startup. Setup changes require restarting only the setup service; Mili's gateway/mail tools need no restart for callback-only changes. Tunnel credential and account certificate stay private under ~/.cloudflared. Tunnel config under ~/.config/cloudflared-mili-oauth contains the locally assigned tunnel ID and credential path; never sync runtime credentials or setup keys to GitHub.
 
 API references: [OAuth](https://www.zoho.com/mail/help/api/using-oauth-2.html), [Drafts](https://www.zoho.com/mail/help/api/post-save-draft-template.html), [Search](https://www.zoho.com/mail/help/api/get-search-emails.html), [Move](https://www.zoho.com/mail/help/api/move-email.html).
+
+## Attachments
+
+Draft/send tools accept up to 10 sources (20 MiB combined): conversation attachment_id, generated workspace_path, authorized drive_file_id (native documents export), or existing mail_attachment IDs. All files resolve before any attachment upload/compose; failures never send an attachmentless message. Byte hashes join durable request fingerprints so changed sources cannot reuse an old receipt. Zoho uploads use multipart FormData with original file bytes and names; fetch generates the boundary. The connected mailbox rejects RAW upload with HTTP 415 even with the documented header. Successful store references are included in messages.attachments for drafts and sends. Existing-mail attachments can be listed, reattached directly or copied to Drive with checksum verification. No new OAuth scope beyond messages.ALL is needed. Run files.test.js in the paired attachment plugin as well as this package's tests. Live verification may stage a file in Zoho storage without creating or sending an email.
+
+The durable mail ledger distinguishes preparation failures from submitted-message uncertainty. File-store failure before compose is retryable with the same request_id (including corrected attachments); the message marker becomes uncertain immediately before POST /messages. In-process active operations prevent simultaneous retries; after restart an unfinished preparation can safely resume. Completed receipts remain idempotent and unknown submitted outcomes remain blocked pending inspection.

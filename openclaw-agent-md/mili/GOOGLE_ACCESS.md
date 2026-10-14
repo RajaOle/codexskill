@@ -22,7 +22,8 @@ Original reference workbooks/Reference Lists and dedicated accounting ledgers re
 - gdrive__get_folder_id: named business folder.
 - gdrive__read_file: metadata/downloaded/exported content; supported Office documents return extraction. Check extraction status and continuation; base64 alone is not readable evidence.
 - gdrive__read_document: extract an exact Drive document as readable text, including Office/OpenDocument, PDF/scans/images and text. Continue with start_page=nextPage or start_char=nextChar; no user conversion step.
-- gdrive__create_file: private inline-text files/folders, inherited sharing.
+- gdrive__create_file: private inline-text files/folders, inherited sharing. Never supply a local path as content or a binary MIME type.
+- mili_drive_upload: original bytes from a conversation attachment ID or generated workspace business file into an exact folder. Read FILE_TRANSFERS.md. Preserves sharing; checksum verified.
 - gdrive__update_file: authorized ordinary non-template edits/moves; preserve historical/executed documents. Never replace protected Sheet templates.
 - gdrive__delete_file: explicitly authorized exact non-template files only; prefer trash, never delete old records automatically.
 - web_search / web_fetch: relevant public research; cite material source/date. No private details in search queries.

@@ -62,3 +62,12 @@ test('reads preserve binary data and export native Docs',async()=>{
   const doc=JSON.parse((await handleCrudTool('read_file',{fileId:'f',content:true},clients)).content[0].text);
   assert.equal(doc.content,'document'); assert.equal(doc.encoding,'utf8');
 });
+test('inline create_file rejects binary MIME/path content before creating a misleading file',async()=>{
+  const clients=mockClients();
+  await assert.rejects(handleCrudTool('create_file',{name:'flyer.jpg',mimeType:'image/jpeg',content:'/home/user/flyer.jpg'},clients),/inline text only/);
+  assert.equal(clients.calls.length,0);
+  await assert.rejects(handleCrudTool('create_file',{name:'flyer.jpg',mimeType:'text/plain',content:'/home/user/flyer.jpg'},clients),/inline text only/);
+  await assert.rejects(handleCrudTool('update_file',{fileId:'f',mimeType:'image/jpeg',content:'/home/user/flyer.jpg'},clients),/inline text only/);
+  clients.drive.files.get=async()=>({data:{mimeType:'image/jpeg'}});
+  await assert.rejects(handleCrudTool('update_file',{fileId:'f',mimeType:'text/plain',content:'fake'},clients),/Existing binary/);
+});

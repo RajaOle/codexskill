@@ -2,6 +2,8 @@
 
 Verify Ibnu/Sindy from trusted metadata before handling attachments.
 
+For save/upload/attach requests read FILE_TRANSFERS.md: arbitrary cataloged file types can be transported as original bytes even when OCR is unsupported. Do not extract or transcribe merely to upload.
+
 1. Call mili_attachment_list. Select current/quoted source by catalog ID/message ID; never substitute an old attachment or guess paths.
 2. Call mili_attachment_read with attachment_id. Supported: PDF; PNG/JPEG/WebP/BMP/TIFF; DOCX/DOCM/DOC; XLSX/XLSM/XLS; PPTX/PPTM/PPT; ODT/ODS/ODP; RTF; TXT/CSV/TSV/MD/JSON/XML/HTML/log text. Office ZIP/XML formats use direct local extraction; legacy Office/RTF uses local LibreOffice with macros disabled. PDF/images use local extraction/Tesseract. No external OCR upload.
 3. WhatsApp preview saying “unsupported document format” does NOT mean the document reader cannot handle it. Use catalog tools first. Do not ask for PDF conversion/pasted text for supported cataloged files.

@@ -1,9 +1,9 @@
 {
   "id": "mili-attachments",
   "name": "Mili Attachment OCR",
-  "description": "Conversation-scoped inbound staging and bounded local OCR; no delivery or shell tool.",
+  "description": "Conversation-scoped attachment staging, local OCR and verified private Drive binary uploads.",
   "activation": {"onStartup": true},
   "enabledByDefault": false,
-  "contracts": {"tools": ["mili_attachment_list", "mili_attachment_read"]},
+  "contracts": {"tools": ["mili_attachment_list", "mili_attachment_read", "mili_drive_upload"]},
   "configSchema": {"type": "object", "additionalProperties": false, "properties": {}}
 }

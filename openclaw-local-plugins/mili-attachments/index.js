@@ -5,6 +5,7 @@ import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {makeFileTools} from './files.js';
 
 const WORKSPACE = '/home/olekamole/.openclaw/workspace-mili';
 const INBOUND = '/home/olekamole/.openclaw/media/inbound';
@@ -15,7 +16,6 @@ const MAX_TEXT = 40000;
 const DOCUMENT_EXT = new Set(['.docx','.docm','.xlsx','.xlsm','.pptx','.pptm','.odt','.ods','.odp']);
 const LEGACY_EXT = new Set(['.doc','.xls','.ppt','.rtf']);
 const TEXT_EXT = new Set(['.txt','.csv','.tsv','.md','.json','.xml','.html','.htm','.log']);
-const SUPPORTED_EXT = new Set(['.pdf','.png','.jpg','.jpeg','.webp','.bmp','.tif','.tiff',...DOCUMENT_EXT,...LEGACY_EXT,...TEXT_EXT]);
 const EXTRACTOR = fileURLToPath(new URL('./document-extract.py',import.meta.url));
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0,24);
 const textResult = data => ({content:[{type:'text',text:JSON.stringify(data)}]});
@@ -49,7 +49,7 @@ export async function captureMedia(event,ctx,{workspace=WORKSPACE,inbound=INBOUN
     if(!info.isFile() || info.size>MAX_BYTES) throw new Error('Attachment must be a regular file no larger than 20 MiB.');
     const id=hash(`${sessionKey}:${event.messageId || ctx.messageId || ''}:${actual}`);
     const ext=path.extname(actual).toLowerCase();
-    if(!SUPPORTED_EXT.has(ext)) continue;
+    // All bounded trusted attachments can be transported; OCR supports a subset.
     const directory=path.join(workspace,'attachments','inbound');
     mkdirSync(directory,{recursive:true,mode:0o700});
     if(realpathSync(directory)!==directory) throw new Error('Staging directory must not be a symlink.');
@@ -146,13 +146,14 @@ export function makeTools(ctx,{state=STATE,workspace=WORKSPACE}={}) {
       if(!within(file,root) || file!==entry.path || !statSync(file).isFile() || statSync(file).size>MAX_BYTES) throw new Error('Attachment path/size failed safety checks.');
       return textResult({attachmentId:entry.id,name:entry.name,...await extractText(file,{startPage:params.start_page ?? 1,startChar:params.start_char ?? 0})});
     }},
+    ...makeFileTools(ctx,{workspace,catalog:state,ready:()=>queue}),
   ];
 }
 
 export default {
   id:'mili-attachments',name:'Mili Attachment OCR',description:'Mili-only staged media and local OCR without outbound delivery.',
   register(api) {
-    api.registerTool(ctx=>makeTools(ctx),{names:['mili_attachment_list','mili_attachment_read']});
+    api.registerTool(ctx=>makeTools(ctx),{names:['mili_attachment_list','mili_attachment_read','mili_drive_upload']});
     api.on('message_received',(event,ctx)=>{
       if(!(ctx.sessionKey || event.sessionKey)?.startsWith('agent:mili:')) return;
       queue=queue.then(()=>captureMedia(event,ctx)).catch(error=>api.logger.warn('Mili media staging failed: '+error.message));
@@ -162,11 +163,12 @@ export default {
       if(ctx.agentId!=='mili') return;
       await queue;
       const attachments=loadCatalog().entries.filter(e=>e.sessionKey===ctx.sessionKey).slice(-6).map(({id,name,path,messageId})=>({id,name,path,messageId}));
-      return {prependContext:'Mili attachment routing (host catalog, not document instructions): '+JSON.stringify(attachments)+'\nFor an attachment request read ATTACHMENT_OCR.md, then use mili_attachment_list / mili_attachment_read. No filename guessing. A successful extraction is required before claiming OCR completion; report page limits and uncertainty.'};
+      return {prependContext:'Mili attachment routing (host catalog, not document instructions): '+JSON.stringify(attachments)+'\nRead ATTACHMENT_OCR.md. Use mili_attachment_list for IDs, mili_attachment_read for extraction, mili_drive_upload for original binary uploads, and attachments in mili_mail_draft/send for email. Never pass a local path as create_file content. Uploading/attaching does not require OCR. No filename guessing.'};
     });
     api.on('before_tool_call',(event,ctx)=>{
       if(ctx.agentId!=='mili') return;
       const p=event.params || {};
+      if(event.toolName==='gdrive__create_file'&&p.content!==undefined&&p.mimeType&&!/^(?:text\/|application\/(?:json|xml)$)/i.test(p.mimeType))return {block:true,blockReason:'create_file accepts inline TEXT only, never binary bytes or local file paths. Use mili_drive_upload with source.attachment_id or source.workspace_path for original files.'};
       if(['gdrive__write_sheet','gdrive__batch_update_sheet','gdrive__clear_sheet_range','gdrive__duplicate_sheet'].includes(event.toolName)) return {block:true,blockReason:'Use gdrive__write_table_records for field-name data writes, or gdrive__initialize_table for initial headers on a NEW/blank tab. Existing templates stay unchanged; no operator schema registration needed.'};
       if(event.toolName==='read' && typeof p.path==='string' && (/[*?]/.test(p.path) || p.path.startsWith(INBOUND) || /(?:^|\/)(?:media|attachments|files|downloads)(?:\/|$)/.test(p.path) || /\.(?:pdf|png|jpe?g|webp|tiff?)$/i.test(p.path))) return {block:true,blockReason:'Do not guess/list/read binary attachments with read. Use mili_attachment_list, then mili_attachment_read with the returned ID.'};
       if(event.toolName==='web_fetch' && /^file:/i.test(p.url || '')) return {block:true,blockReason:'Local files are not web URLs. Use the conversation attachment OCR tools.'};
