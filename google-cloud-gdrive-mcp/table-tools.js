@@ -17,7 +17,7 @@ const result = data => ({content:[{type:'text',text:JSON.stringify(data)}]});
 const string = {type:'string'};
 const tool = (name,description,properties,required) => ({name,description,inputSchema:{type:'object',additionalProperties:false,properties,required}});
 export const tableTools = [
-  tool('inspect_table','Discover live headers automatically; return exact field names, protected header row and next data row. No operator registration needed.',{fileId:string,sheetName:string},['fileId','sheetName']),
+  tool('inspect_table','Discover live headers; safely refresh human-added columns or an empty Phone / Email split. Never changes Sheet cells. Returns exact field names and next data row; inspect again after a human layout change.',{fileId:string,sheetName:string},['fileId','sheetName']),
   tool('initialize_table','Create a new tab or initialize a completely blank tab ONCE. Set title/description/headers and initial header formatting; existing nonempty tabs are never overwritten. Headers become immutable.',{fileId:string,sheetName:string,headers:{type:'array',minItems:2,maxItems:100,items:string},title:string,description:string},['fileId','sheetName','headers']),
   tool('write_table_records','Insert or update records using EXACT live header names as object keys. Backend maps columns and selects rows; never supply coordinates. Supply keyColumn (unique record ID/name) for idempotent retries; mode=insert preserves history, upsert updates only supplied fields. Never rewrites headers/formulas.',{fileId:string,sheetName:string,keyColumn:string,mode:{type:'string',enum:['insert','upsert']},records:{type:'array',minItems:1,maxItems:100,items:{type:'object',additionalProperties:{type:['string','number','boolean']}}}},['fileId','sheetName','keyColumn','mode','records']),
 ];
@@ -52,7 +52,39 @@ export class TableGuard {
     const res=await sheets.spreadsheets.values.get({spreadsheetId:args.fileId,range:quote(args.sheetName),valueRenderOption:'FORMULA'},options);
     return {tab,rows:res.data.values||[]};
   }
-  discover(args,view) {
+  refreshPolicy(args,view,policy) {
+    const {tab,rows}=view;
+    // Only externally edited operational layouts may be adopted. Legacy positional
+    // validators and reference/accounting templates must retain their exact schema.
+    if(args.fileId===TRACKER_ID && TABLES[args.sheetName]) fail('Protected original headers changed; preserve evidence.');
+    blockExpenseMutation('write_sheet',args);
+    const headers=rows[policy.headerRow-1] || [];
+    const width=Math.max(policy.template[0].length,tab.gridProperties.columnCount);
+    if(policy.title!==tab.title || headers.length<=policy.headers.length || headers.length>100 ||
+      headers.some(h=>typeof h!=='string'||!h.trim()||h.trimStart().startsWith('=')||h.length>150) ||
+      new Set(headers.map(key)).size!==headers.length ||
+      !equal(pad(policy.template,policy.headerRow-1,width),pad(rows,policy.headerRow-1,width))) {
+      fail('Protected headers/title/template changed incompatibly; preserve evidence. Only added columns or an empty Phone / Email split can be rediscovered.');
+    }
+    let cursor=0;
+    for(const old of policy.headers) {
+      const found=headers.indexOf(old,cursor);
+      if(found>=0) {cursor=found+1;continue;}
+      // A split is unambiguous only when both resulting contact columns are empty.
+      // Populated mixed contacts require deliberate migration, never guessed moves.
+      const phone=headers.indexOf('Phone',cursor),email=headers.indexOf('Email',phone+1);
+      if(!/^Phone\s*\/\s*Email$/i.test(old) || phone<cursor || email!==phone+1 ||
+        rows.slice(policy.headerRow).some(row=>cell(row[phone])!==''||cell(row[email])!=='')) {
+        fail('Protected headers removed, renamed, reordered or populated contact split; preserve evidence.');
+      }
+      cursor=email+1;
+    }
+    const next={...policy,headers:[...headers],template:pad(rows.slice(0,policy.headerRow),policy.headerRow,tab.gridProperties.columnCount),
+      revisions:[...(policy.revisions||[]),{at:new Date().toISOString(),headers:policy.headers,template:policy.template}]};
+    this.state.tables[args.fileId+':'+tab.sheetId]=next;this.save();
+    return next;
+  }
+  discover(args,view,allowRefresh=false) {
     const {tab,rows}=view;
     if(args.fileId===TEMPLATE_ID || /^(?:Reference Lists|00 Dashboard|09 Operating Guide|10 Product Incoterms)$/i.test(args.sheetName)) fail('Reference/template content is read-only; use a new operational tab.');
     const id=args.fileId+':'+tab.sheetId;
@@ -72,7 +104,11 @@ export class TableGuard {
       policy={title:tab.title,sheetId:tab.sheetId,headerRow,headers,template:pad(rows.slice(0,headerRow),headerRow,tab.gridProperties.columnCount)};
       this.state.tables[id]=policy; this.state.workbooks[args.fileId]=true; this.save();
     }
-    if(policy.title!==tab.title || !equal(policy.template,pad(rows.slice(0,policy.headerRow),policy.headerRow,policy.template[0].length))) fail('Protected headers/title/template changed since discovery. Preserve evidence; do not rewrite them.');
+    const width=Math.max(policy.template[0].length,tab.gridProperties.columnCount);
+    if(policy.title!==tab.title || !equal(pad(policy.template,policy.headerRow,width),pad(rows,policy.headerRow,width))) {
+      if(!allowRefresh) fail('Protected headers/title/template changed since discovery. Call inspect_table to rediscover safe human-added columns; never rewrite them.');
+      policy=this.refreshPolicy(args,view,policy);
+    }
     let last=policy.headerRow;
     rows.forEach((row,i)=>{if(i>=policy.headerRow && row.some(v=>cell(v)!=='' && !(typeof v==='string'&&v.startsWith('='))))last=i+1;});
     return {...policy,nextRow:last+1};
@@ -119,8 +155,13 @@ export class TableGuard {
   validateValue(header,value,known,index) {
     if(!['string','number','boolean'].includes(typeof value) || (typeof value==='number'&&!Number.isFinite(value)) || (typeof value==='string'&&value.trimStart().startsWith('=')))fail('Use literal scalar data; formulas are protected.');
     if(value==='')return;
-    if(/email/i.test(header) && (typeof value!=='string'||!value.split(/[;,|]/).every(v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()))))fail(header+' requires email addresses.');
-    if(/phone|whatsapp|\bwa\b/i.test(header) && (typeof value!=='string'||!value.split(/[;,|]/).every(v=>/^\+?[\d ().-]{4,40}$/.test(v.trim()))))fail(header+' requires text phone identifiers, not narrative.');
+    const emailField=/email/i.test(header),phoneField=/phone|whatsapp|\bwa\b/i.test(header);
+    const email=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    const phone=v=>/^\+?[\d ().-]{4,40}$/.test(v)&&/\d/.test(v);
+    if((emailField||phoneField) && (typeof value!=='string'||!value.split(/[;,|]/).every(v=>
+      (emailField&&email(v.trim()))||(phoneField&&phone(v.trim()))))) {
+      fail(header+(emailField&&phoneField?' requires text phone identifiers or email addresses.':emailField?' requires email addresses.':' requires text phone identifiers, not narrative.'));
+    }
     if((known?.numeric.includes(index) || /^(?:Minimum Facility USD|Amount|Quantity|Rate|Supplier Price|MOQ \(kg\)|.*Capacity.*\(kg\))$/i.test(header)) && typeof value!=='number')fail(header+' requires a numeric value.');
     if((known?.dates.includes(index)|| /^(?:Quote Date|Date|Last Contact|Quote Valid Until)$/i.test(header)) && !(typeof value==='number'||/^\d{4}-\d{2}-\d{2}$/.test(String(value))))fail(header+' requires YYYY-MM-DD.');
   }
@@ -193,7 +234,10 @@ export class TableGuard {
     return this.locked(args.fileId,async()=>{
       if(name==='initialize_table')return this.initialize(args,sheets);
       if(name==='write_table_records')return this.write(args,sheets);
-      const view=await this.read(args,sheets),p=this.discover(args,view);
+      const view=await this.read(args,sheets);
+      const fresh=await this.read(args,sheets);
+      if(!equal(view,fresh))fail('Concurrent edit during inspection; inspect fresh table again.');
+      const p=this.discover(args,view,true);
       return result({sheetName:args.sheetName,headerRow:p.headerRow,headers:p.headers,nextRow:p.nextRow,headersProtected:true});
     });
   }

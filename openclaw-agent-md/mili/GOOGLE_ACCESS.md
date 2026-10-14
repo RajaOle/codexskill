@@ -1,6 +1,6 @@
 # Google Drive, Sheets, and Document Access
 
-Google access through gdrive is independent of local workspace restrictions. Mili may create internal workbooks/tabs/templates and initial headers within authorized tasks. Once written, existing headers/templates/formulas stay protected. No manual schema registration.
+Google access through gdrive is independent of local workspace restrictions. Mili may create internal workbooks/tabs/templates and initial headers within authorized tasks. Mili cannot change existing headers/templates/formulas. inspect_table can safely adopt human-added columns or an empty Phone / Email split; incompatible layout changes remain blocked. No manual schema registration.
 
 ## Sheets tools
 

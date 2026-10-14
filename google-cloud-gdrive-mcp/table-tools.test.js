@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {TableGuard} from './table-tools.js';
-import {TRACKER_ID,TEMPLATE_ID} from './tracker-guard.js';
+import {TRACKER_ID,TEMPLATE_ID,TABLES} from './tracker-guard.js';
 import {IBNU_ID} from './expense-guard.js';
 
 async function fixture(fn,rows=[['Bank ID','Bank Name','Email','Phone/WhatsApp','Minimum Facility USD']]) {
@@ -65,4 +65,97 @@ test('concurrent additions select different rows; failed readback never reports 
   await Promise.all([f.guard.handle('write_table_records',f.args,f.sheets),f.guard.handle('write_table_records',other,f.sheets)]);
   assert.equal(f.tabs[0].rows[2][0],'BANK-002');
   f.setCorrupt();await assert.rejects(f.guard.handle('write_table_records',{...other,records:[{'Bank ID':'BANK-003','Bank Name':'Third'}]},f.sheets),/headers/);
+}));
+
+test('mixed contact field accepts phones, emails and mixed lists; dedicated columns stay typed',()=>fixture(async f=>{
+  for(const value of ['+33 4 93 60 82 82','hello@example.com','+33123456789; hello@example.com'])
+    assert.doesNotThrow(()=>f.guard.validateValue('Phone / Email',value));
+  for(const value of ['not a contact',12345678,'....','hello@example.com; invalid'])
+    assert.throws(()=>f.guard.validateValue('Phone / Email',value),/BLOCKED/);
+  assert.throws(()=>f.guard.validateValue('Phone','hello@example.com'),/phone/);
+  assert.throws(()=>f.guard.validateValue('Email','+33123456789'),/email/);
+}));
+
+test('human contact split refreshes snapshot without Sheet writes; pending phone upsert preserves template/data/formulas',()=>fixture(async f=>{
+  f.args={...f.args,sheetName:'01 Daily Activity',keyColumn:'Key Notes',records:[{'Key Notes':'call-1',Phone:'+33123456789'}]};
+  f.tabs[0].properties.title=f.args.sheetName;
+  await f.guard.handle('inspect_table',f.args,f.sheets);
+  // Human inserts a column, preserving business data and a formula.
+  f.tabs[0].rows[3]=['Date','Phone','Email','Key Notes','Next Action','Total'];
+  f.tabs[0].rows[4]=['2026-10-13','','','call-1','Follow up','=1+1'];
+  await assert.rejects(f.guard.handle('write_table_records',f.args,f.sheets),/inspect_table/);
+  const before=structuredClone(f.tabs[0].rows);
+  const info=JSON.parse((await f.guard.handle('inspect_table',f.args,f.sheets)).content[0].text);
+  assert.deepEqual(info.headers,f.tabs[0].rows[3]);
+  assert.deepEqual(f.tabs[0].rows,before);assert.equal(f.writes(),0);
+  assert.equal(f.guard.state.tables[TRACKER_ID+':13'].revisions.length,1);
+  const restart=new TableGuard(f.statePath);
+  await restart.handle('write_table_records',f.args,f.sheets);
+  before[4][1]='+33123456789';assert.deepEqual(f.tabs[0].rows,before);
+  assert.equal(f.writes(),1);
+  await restart.handle('write_table_records',f.args,f.sheets);assert.equal(f.writes(),1);
+},[['Activity log'],['Instruction'],[],['Date','Phone / Email','Key Notes','Next Action','Total'],['2026-10-13','','call-1','Follow up','=1+1']]));
+
+test('added columns beyond old grid width are detected; inspect refreshes without changing cells',()=>fixture(async f=>{
+  f.tabs[0].properties.gridProperties.columnCount=5;
+  await f.guard.handle('inspect_table',f.args,f.sheets);
+  f.tabs[0].properties.gridProperties.columnCount=6;
+  f.tabs[0].rows[0].push('Notes');
+  await assert.rejects(f.guard.handle('write_table_records',f.args,f.sheets),/inspect_table/);
+  await f.guard.handle('inspect_table',f.args,f.sheets);
+  await f.guard.handle('write_table_records',f.args,f.sheets);
+  assert.equal(f.tabs[0].rows[1][3],'+6212345678');
+}));
+
+test('refresh rejects renamed/deleted/reordered/duplicate/formula headers and changed title/preamble',async()=>{
+  for(const mutate of [
+    f=>{f.tabs[0].rows[0][0]='Changed ID';},
+    f=>{f.tabs[0].rows[0].splice(1,1);},
+    f=>{f.tabs[0].rows[0].reverse();},
+    f=>{f.tabs[0].rows[0].push('Email');},
+    f=>{f.tabs[0].rows[0].push('=1+1');},
+    f=>{f.tabs[0].properties.title='Renamed';f.args.sheetName='Renamed';},
+  ]) await fixture(async f=>{
+    await f.guard.handle('inspect_table',f.args,f.sheets);
+    const state=structuredClone(f.guard.state);
+    mutate(f);await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/BLOCKED/);
+    assert.deepEqual(f.guard.state,state);assert.equal(f.writes(),0);
+  });
+  await fixture(async f=>{
+    await f.guard.handle('inspect_table',f.args,f.sheets);
+    f.tabs[0].rows[0][0]='Changed title';f.tabs[0].rows[1].push('Notes');
+    await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/incompatibly/);
+  },[['Title'],['Bank ID','Bank Name']]);
+});
+
+test('populated contact split is ambiguous and cannot be adopted',()=>fixture(async f=>{
+  await f.guard.handle('inspect_table',f.args,f.sheets);
+  f.tabs[0].rows[0]=['Bank ID','Phone','Email'];
+  f.tabs[0].rows[1]=['B1','hello@example.com',''];
+  await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/populated contact split/);
+  assert.equal(f.writes(),0);
+},[['Bank ID','Phone / Email'],['B1','hello@example.com']]));
+
+test('legacy supplier schema cannot refresh; accounting schema cannot refresh',async()=>{
+  await fixture(async f=>{
+    f.tabs[0].properties.title='03 Supplier Master';f.args.sheetName='03 Supplier Master';
+    await f.guard.handle('inspect_table',f.args,f.sheets);
+    f.tabs[0].rows[3].push('New field');
+    await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/original headers/);
+  },[[],[],[],TABLES['03 Supplier Master'].header]);
+  await fixture(async f=>{
+    f.args.fileId=IBNU_ID;
+    await f.guard.handle('inspect_table',f.args,f.sheets);
+    f.tabs[0].rows[0].push('New field');
+    await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/EXPENSE WRITE BLOCKED/);
+  });
+});
+
+test('concurrent edit during inspection never adopts a snapshot',()=>fixture(async f=>{
+  const get=f.sheets.spreadsheets.values.get;let calls=0;
+  f.sheets.spreadsheets.values.get=async args=>{
+    const result=await get(args);if(++calls===1)f.tabs[0].rows[0].push('Notes');return result;
+  };
+  await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/Concurrent edit/);
+  assert.deepEqual(f.guard.state.tables,{});assert.equal(f.writes(),0);
 }));

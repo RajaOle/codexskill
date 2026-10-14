@@ -93,3 +93,7 @@ Public backup redacts live workbook IDs. Set `MILI_TEMPLATE_ID`, `MILI_TRACKER_I
 `read_document` extracts exact Drive PDFs/images, Office/OpenDocument and text locally. `read_file(content=true)` automatically extracts supported Office documents. Reader requires Python 3, file, Poppler/Tesseract and LibreOffice for legacy DOC/XLS/PPT/RTF. DOCX/XLSX/PPTX/OpenDocument need no additional Python packages. Embedded Office images are not OCRed directly; spreadsheet formula values are cached, not recalculated. Chunks expose page/character continuation. Macros are not executed.
 
 Run `node table-tools.test.js`, `node tracker-guard.test.js`, `node expense-guard.test.js`, `node crud.test.js`. Use the paired reader tests for extraction/OCR. No live delivery tests.
+
+## Safe human header changes (2026-10-14)
+
+`inspect_table` can adopt additive human changes to operational headers after two identical live reads. All existing fields remain in order; an empty combined Phone / Email column may become adjacent Phone and Email fields. Prior snapshots remain in private state revisions. No Sheet values, formatting, validation or formulas change during discovery. Data writes require fresh inspection after schema changes and use the current exact header names. Removed/renamed/reordered fields, changed title/instruction rows, populated contact splits, legacy supplier/price schemas and accounting/reference templates remain blocked. Mixed contact fields accept phone or email; dedicated columns retain strict typing.
