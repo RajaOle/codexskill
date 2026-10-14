@@ -71,3 +71,15 @@ test('inline create_file rejects binary MIME/path content before creating a misl
   clients.drive.files.get=async()=>({data:{mimeType:'image/jpeg'}});
   await assert.rejects(handleCrudTool('update_file',{fileId:'f',mimeType:'text/plain',content:'fake'},clients),/Existing binary/);
 });
+
+test('NEW Google Doc imports inline text with distinct target/source MIME; rename cannot pretend to convert',async()=>{
+  const clients=mockClients();
+  await handleCrudTool('create_file',{name:'Meeting notes',folderId:'folder',mimeType:'application/vnd.google-apps.document',content:'Verified source notes'},clients);
+  const request=clients.calls[0].args[0];
+  assert.equal(request.requestBody.mimeType,'application/vnd.google-apps.document');
+  assert.equal(request.media.mimeType,'text/plain');
+  assert.deepEqual(request.requestBody.parents,['folder']);
+  let text='';for await(const part of request.media.body)text+=part;
+  assert.equal(text,'Verified source notes');
+  await assert.rejects(handleCrudTool('update_file',{fileId:'f',name:'Converted',mimeType:'application/vnd.google-apps.document'},clients),/rename does not convert/);
+});

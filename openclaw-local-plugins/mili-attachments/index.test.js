@@ -44,6 +44,7 @@ test('binary create_file cannot upload a path string; original byte tool remains
   const hooks={};plugin.register({registerTool:()=>{},on:(n,f)=>{hooks[n]=f;},logger:{warn:()=>{}}});
   assert.equal(hooks.before_tool_call({toolName:'gdrive__create_file',params:{mimeType:'image/jpeg',content:'/home/user/flyer.jpg'}},{agentId:'mili'}).block,true);
   assert.equal(hooks.before_tool_call({toolName:'gdrive__create_file',params:{mimeType:'text/plain',content:'real notes'}},{agentId:'mili'}),undefined);
+  assert.equal(hooks.before_tool_call({toolName:'gdrive__create_file',params:{mimeType:'application/vnd.google-apps.document',content:'real notes'}},{agentId:'mili'}),undefined);
   assert.equal(hooks.before_tool_call({toolName:'mili_drive_upload',params:{}},{agentId:'mili'}),undefined);
 });
 test('trusted arbitrary binary attachments are cataloged even without OCR support',async()=>{

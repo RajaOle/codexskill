@@ -25,6 +25,14 @@ const occupied = row => row?.some(v => cell(v) !== '');
 const colIndex = label => [...label].reduce((n,c) => n*26+c.charCodeAt(0)-64,0)-1;
 const pad = (rows, count, width) => Array.from({length:count},(_,i) => Array.from({length:width},(_,j) => cell(rows[i]?.[j])));
 
+export function quoteIdentity(row) {
+  let date=norm(row[0]);
+  const named=/^(\d{1,2})-(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)-(\d{4})$/.exec(date);
+  if(named)date=named[3]+'-'+String(['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(named[2])+1).padStart(2,'0')+'-'+named[1].padStart(2,'0');
+  if(typeof row[0]==='number'&&Number.isInteger(row[0])&&row[0]>=29221&&row[0]<=73415)date=new Date(Date.UTC(1899,11,30)+row[0]*86400000).toISOString().slice(0,10);
+  return [date,...[1,3,5,12,13].map(i=>norm(row[i]).replace(/,/g,''))].join('|');
+}
+
 export function blockProtectedMutation(name, args = {}) {
   if (!MUTATIONS.has(name)) return;
   if (args.fileId === TEMPLATE_ID) fail('Original reference workbook is entirely read-only.');
@@ -45,10 +53,22 @@ export function parseTarget(args) {
   return {title,table,first,last,left,right};
 }
 
-export function validateRows(title, rows) {
+export function validateRows(title, rows, {baselineRows} = {}) {
   const table = TABLES[title];
-  const ids = new Set(), companies = new Set(), quotes = new Set();
+  const ids = new Set(), companies = new Set(), quotes = new Map();
+  const quoteKey = quoteIdentity;
+  const baselineQuotes = new Map();
+  if (title === '04 Price Specs Capacity' && baselineRows) {
+    for (const [index,row] of baselineRows.entries()) {
+      if(index < 4 || !occupied(row)) continue;
+      const key = quoteKey(row);
+      if(!baselineQuotes.has(key)) baselineQuotes.set(key,[]);
+      baselineQuotes.get(key).push({index,row:pad([row],1,table.width)[0]});
+    }
+  }
+  let rowIndex = 3;
   for (const row of rows.slice(4)) {
+    rowIndex++;
     if (!occupied(row)) continue;
     for (const value of row) {
       if (!['string','number','boolean'].includes(typeof cell(value)) || (typeof value === 'number' && !Number.isFinite(value))) fail('Cells must contain literal scalar values.');
@@ -65,9 +85,9 @@ export function validateRows(title, rows) {
     } else {
       if (!norm(row[0]) || !/^(SUP-\d+|PLAN)$/.test(String(row[1])) || !norm(row[2]) || !norm(row[3])) fail('Quote date, supplier ID, supplier and commodity are required.');
       // Missing unit/source metadata is ambiguity, not permission to repeat a quote.
-      const key = [0,1,3,5,12,13].map(i => norm(row[i]).replace(/,/g,'')).join('|');
-      if (quotes.has(key)) fail('Duplicate/ambiguous dated quote; operator reconciliation required.');
-      quotes.add(key);
+      const key = quoteKey(row);
+      if(!quotes.has(key)) quotes.set(key,[]);
+      quotes.get(key).push({index:rowIndex,row:pad([row],1,table.width)[0]});
       if (cell(row[13]) !== '' && !/^[A-Z]{3}$/.test(String(row[13]))) fail('Currency must be a three-letter currency code.');
     }
     for (const i of table.numeric) {
@@ -77,6 +97,13 @@ export function validateRows(title, rows) {
       const v = String(cell(row[i]));
       const serial = typeof row[i] === 'number' && Number.isInteger(row[i]) && row[i]>=29221 && row[i]<=73415;
       if (v && !serial && !/^(?:\d{4}-\d{2}-\d{2}|\d{1,2}-(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{4})$/.test(v)) fail(`Date column ${i+1} requires an explicit date, not narrative/email.`);
+    }
+  }
+  // Existing ambiguity must not freeze unrelated work. Its exact rows and
+  // positions must remain unchanged; new/enlarged/edited duplicate groups fail.
+  for(const [key,group] of quotes) {
+    if(group.length>1 && !isDeepStrictEqual(group,baselineQuotes.get(key))) {
+      fail('Duplicate/ambiguous dated quote at rows '+group.map(r=>r.index+1).join(', ')+'. Preserve these rows; use a distinct source/quote identity for unrelated records.');
     }
   }
 }

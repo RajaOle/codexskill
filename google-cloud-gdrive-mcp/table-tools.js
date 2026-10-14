@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual as equal } from 'node:util';
-import { TABLES, TRACKER_ID, TEMPLATE_ID, validateRows } from './tracker-guard.js';
+import { TABLES, TRACKER_ID, TEMPLATE_ID, validateRows, quoteIdentity } from './tracker-guard.js';
 import { blockExpenseMutation } from './expense-guard.js';
 
 const options = {timeout:15000,retry:false};
@@ -178,7 +178,7 @@ export class TableGuard {
       if(!record || typeof record!=='object'||Array.isArray(record))fail('Each record must be an object keyed by exact headers.');
       for(const [h,v]of Object.entries(record)){const i=headers.indexOf(h);if(i<0)fail('Unknown column '+h+'; preserve supplied data locally or use an existing notes column.');this.validateValue(h,v,known,i);}
       const price=args.fileId===TRACKER_ID&&args.sheetName==='04 Price Specs Capacity';
-      const identity=row=>price?[0,1,3,5,12,13].map(i=>key(row[i])).join('|'):key(row[keyIndex]);
+      const identity=row=>price?quoteIdentity(row):key(row[keyIndex]);
       const inputRow=headers.map(h=>record[h]??'');
       const id=identity(inputRow);if(!key(record[args.keyColumn])||seen.has(id))fail('Every input record needs a distinct nonempty '+args.keyColumn);seen.add(id);
       const matches=[];planned.forEach((row,i)=>{if(i>=p.headerRow && identity(row)===id)matches.push(i);});
@@ -198,23 +198,28 @@ export class TableGuard {
       }
       planned[index]=row;changes.push({row:index+1,fields:delta,status:delta.length?'written':'already_recorded'});
     }
-    if(known)validateRows(args.sheetName,planned.map(r=>r.slice(0,known.width)));
+    if(known)validateRows(args.sheetName,planned.map(r=>r.slice(0,known.width)),{baselineRows:before.rows});
     // Honor dropdown/checkbox validation without modifying it. Fetch only rules at target cells.
     if(writes.length) {
       const detail=await sheets.spreadsheets.get({spreadsheetId:args.fileId,ranges:writes.map(w=>w.range),includeGridData:true,fields:'sheets(data(startRow,startColumn,rowData(values(dataValidation))))'},options);
+      const invalid=[];
       for(const sheet of detail.data.sheets||[])for(const grid of sheet.data||[])for(const [r,row]of (grid.rowData||[]).entries())for(const [c,target]of (row.values||[]).entries()) {
         const rule=target.dataValidation?.condition;
         const value=planned[(grid.startRow||0)+r]?.[(grid.startColumn||0)+c];
         if(!rule || cell(value)==='')continue;
-        if(rule.type==='ONE_OF_LIST' && !rule.values?.some(v=>String(v.userEnteredValue)===String(value)))fail('Value does not match the existing dropdown choices.');
+        const field=headers[(grid.startColumn||0)+c];
+        const mismatch=choices=>invalid.push(field+' row '+((grid.startRow||0)+r+1)+' requires an existing choice: '+JSON.stringify(choices.slice(0,20).map(v=>String(v).slice(0,150))));
+        if(rule.type==='ONE_OF_LIST' && !rule.values?.some(v=>String(v.userEnteredValue)===String(value)))mismatch((rule.values||[]).map(v=>v.userEnteredValue));
         if(rule.type==='ONE_OF_RANGE') {
           const range=rule.values?.[0]?.userEnteredValue?.replace(/^=/,'');
           if(!range)fail('Existing dropdown source range is invalid.');
           const source=await sheets.spreadsheets.values.get({spreadsheetId:args.fileId,range,valueRenderOption:'UNFORMATTED_VALUE'},options);
-          if(!(source.data.values||[]).flat().some(v=>String(v)===String(value)))fail('Value does not match the existing reference-list dropdown choices.');
+          const choices=(source.data.values||[]).flat();
+          if(!choices.some(v=>String(v)===String(value)))mismatch(choices);
         }
-        if(rule.type==='BOOLEAN' && ![true,false,...(rule.values||[]).map(v=>v.userEnteredValue)].includes(value))fail('Value does not match the existing checkbox choices.');
+        if(rule.type==='BOOLEAN' && ![true,false,...(rule.values||[]).map(v=>v.userEnteredValue)].includes(value))mismatch([true,false,...(rule.values||[]).map(v=>v.userEnteredValue)]);
       }
+      if(invalid.length)fail(invalid.join('; ')+'. Put certificate IDs/descriptions in Detailed Specification or Remarks; preserve dropdown validation.');
     }
     const fresh=await this.read(args,sheets);
     if(!equal(before,fresh))fail('Concurrent edit detected; inspect fresh table and replan.');

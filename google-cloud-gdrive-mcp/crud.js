@@ -69,10 +69,11 @@ export async function handleCrudTool(name, args, { drive, sheets }) {
     return result(res.data);
   }
   if (name === "create_file") {
-    if(args.content!==undefined && (typeof args.content!=='string'||!inlineTextMime(args.mimeType)||misleadingBinaryPath(args)))throw new Error('create_file supports inline text only. For binary files use the enabled attachment upload tool; never supply a local path as content.');
+    const nativeDocument=args.mimeType==='application/vnd.google-apps.document';
+    if(args.content!==undefined && (typeof args.content!=='string'||(!inlineTextMime(args.mimeType)&&!nativeDocument)||misleadingBinaryPath(args)))throw new Error('create_file supports inline text only (including a NEW Google Doc from text). For binary files use the enabled attachment upload tool; never supply a local path as content.');
     const res = await drive.files.create({
       requestBody: { name: args.name, mimeType: args.mimeType || "text/plain", parents: args.folderId ? [args.folderId] : undefined },
-      ...(args.content !== undefined ? { media: { mimeType: args.mimeType || "text/plain", body: Readable.from([args.content]) } } : {}),
+      ...(args.content !== undefined ? { media: { mimeType: nativeDocument ? 'text/plain' : args.mimeType || "text/plain", body: Readable.from([args.content]) } } : {}),
       fields: fileFields, supportsAllDrives: true
     });
     return result(res.data);
@@ -100,6 +101,7 @@ export async function handleCrudTool(name, args, { drive, sheets }) {
     return result({ ...meta.data, contentMimeType: type, encoding, content: data.toString(encoding) });
   }
   if (name === "update_file") {
+    if(args.mimeType?.startsWith('application/vnd.google-apps.'))throw new Error('update_file cannot convert existing files to Google Workspace types. Create a NEW Google Doc using create_file with inline text; a rename does not convert it.');
     if (args.name === undefined && args.folderId === undefined && args.content === undefined) throw new Error("Provide name, folderId, or content to update.");
     if(args.content!==undefined) {
       if(typeof args.content!=='string'||!inlineTextMime(args.mimeType)||misleadingBinaryPath(args))throw new Error('update_file accepts inline text only; upload original binary bytes with the attachment tool.');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {TABLES,TRACKER_ID,TEMPLATE_ID,blockProtectedMutation,guardedWrite,parseTarget} from './tracker-guard.js';
+import {TABLES,TRACKER_ID,TEMPLATE_ID,blockProtectedMutation,guardedWrite,parseTarget,validateRows} from './tracker-guard.js';
 
 const title='03 Supplier Master', schema=TABLES[title];
 const supplier=(id='SUP-001')=>[id,'Example supplier','','','+62123456789','a@example.com','Vanilla','Producer','','','','','','','','New','06-Oct-2026',''];
@@ -63,6 +63,21 @@ test('duplicate quotes with missing unit remain ambiguous and block',async()=>{
   const quote=Array(23).fill('');Object.assign(quote,{0:'06-Oct-2026',1:'SUP-001',2:'Supplier',3:'Vanilla',5:'Grade 3',12:1000000,13:'IDR',14:'kg'});
   const duplicate=[...quote];duplicate[14]='';m.rows.push(quote,duplicate);
   await assert.rejects(guardedWrite({fileId:TRACKER_ID,range:t+'!A7:W7',values:[quote]},m.sheets),/Duplicate\/ambiguous/);noWrite(m);
+});
+
+test('baseline exemption permits only unchanged legacy duplicate groups, never edits, new duplicates or extra copies',()=>{
+  const title='04 Price Specs Capacity';
+  const q=Array(23).fill('');Object.assign(q,{0:'2026-10-05',1:'SUP-001',2:'Supplier',3:'Vanilla',5:'Grade 3',12:1000000,13:'IDR',14:'kg'});
+  const other=[...q];other[14]='';
+  const baseline=[[],[],[],TABLES[title].header,q,other];
+  const fresh=[...q];fresh[1]='SUP-003';fresh[0]='2024-02-15';fresh[12]='';fresh[13]='';
+  assert.doesNotThrow(()=>validateRows(title,[...baseline,fresh],{baselineRows:baseline}));
+  for(const planned of [
+    [...baseline,[...q]],
+    [...baseline,fresh,[...fresh]],
+    baseline.map((row,i)=>i===4?row.map((v,c)=>c===22?'changed':v):row),
+    [...baseline.slice(0,4),other,q],
+  ])assert.throws(()=>validateRows(title,planned,{baselineRows:baseline}),/Duplicate\/ambiguous/);
 });
 
 test('concurrent writes serialize and cannot replace the first new record',async()=>{

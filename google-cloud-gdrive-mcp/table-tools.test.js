@@ -159,3 +159,32 @@ test('concurrent edit during inspection never adopts a snapshot',()=>fixture(asy
   await assert.rejects(f.guard.handle('inspect_table',f.args,f.sheets),/Concurrent edit/);
   assert.deepEqual(f.guard.state.tables,{});assert.equal(f.writes(),0);
 }));
+
+test('legacy duplicate quote rows do not freeze unrelated COA insert; history and idempotency preserved',()=>fixture(async f=>{
+  const title='04 Price Specs Capacity',table=TABLES[title];
+  f.tabs[0].properties.title=title;f.tabs[0].properties.sheetId=table.id;
+  const quote=Array(table.width).fill('');Object.assign(quote,{0:'05-Oct-2026',1:'SUP-001',2:'Supplier A',3:'Vanilla beans',5:'Grade 3',12:'1,000,000',13:'IDR',14:'kg'});
+  const duplicate=[...quote];duplicate[14]='';duplicate[22]='Separate historical source';
+  f.tabs[0].rows=[['Title'],['Instructions'],[],table.header.slice(),quote,duplicate];
+  const before=structuredClone(f.tabs[0].rows);
+  const args={fileId:TRACKER_ID,sheetName:title,keyColumn:'Quote Date',mode:'insert',records:[{'Quote Date':'2024-02-15','Supplier ID':'SUP-003',Supplier:'Supplier B',Commodity:'Vanilla (cured bean)','Grade / Variety':'Planifolia','Detailed Specification':'COA-only record; no commercial price','COA / Lab Result?':'SUCOFINDO COA source'}]};
+  await f.guard.handle('write_table_records',args,f.sheets);
+  assert.deepEqual(f.tabs[0].rows.slice(0,before.length),before);
+  assert.equal(f.tabs[0].rows[6][0],'2024-02-15');assert.equal(f.writes(),1);
+  await f.guard.handle('write_table_records',args,f.sheets);assert.equal(f.writes(),1);
+  await assert.rejects(f.guard.handle('write_table_records',{...args,records:[{'Quote Date':'2026-10-05','Supplier ID':'SUP-001',Supplier:'Supplier A',Commodity:'Vanilla beans','Grade / Variety':'Grade 3','Supplier Price':1000000,Currency:'IDR'}]},f.sheets),/Ambiguous duplicate/);
+  assert.equal(f.writes(),1);
+}));
+
+test('dropdown failures report all affected fields and choices without weakening validation',()=>fixture(async f=>{
+  const original=f.sheets.spreadsheets.get;
+  f.sheets.spreadsheets.get=async args=>args.includeGridData?{data:{sheets:[{data:[{startRow:1,startColumn:1,rowData:[{values:[
+    {dataValidation:{condition:{type:'ONE_OF_LIST',values:[{userEnteredValue:'Yes'},{userEnteredValue:'No'},{userEnteredValue:'Pending'}]}}},
+    {dataValidation:{condition:{type:'ONE_OF_LIST',values:[{userEnteredValue:'Approved'}]}}},
+  ]}]}]}]}}:original(args);
+  await assert.rejects(f.guard.handle('write_table_records',f.args,f.sheets),error=>{
+    assert.match(error.message,/Bank Name row 2 requires an existing choice: \["Yes","No","Pending"\]/);
+    assert.match(error.message,/Email row 2 requires an existing choice: \["Approved"\]/);return true;
+  });
+  assert.equal(f.writes(),0);
+}));
