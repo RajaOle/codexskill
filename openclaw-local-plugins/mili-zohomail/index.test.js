@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile,chmod} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import {ZohoMailbox,makeMailTools,parseZoho,encodeZoho,savePrivate,readPrivate,fetchJSON} from './index.js';
+import {ZohoMailbox,makeMailTools,parseZoho,encodeZoho,savePrivate,readPrivate,fetchJSON,toolNames} from './index.js';
 import {setupPage,createSetupHandler} from './setup.mjs';
 import {Readable} from 'node:stream';
 
@@ -28,6 +28,10 @@ async function fixture(fn) {
   try{await fn({root,calls,state,mailbox});}finally{await rm(root,{recursive:true,force:true});}
 }
 const mail={request_id:'test-task-0001',to:['buyer@example.com'],subject:'Introduction',content:'Hello'};
+test('manifest activates and advertises every registered tool',async()=>{
+  const manifest=JSON.parse(await readFile(new URL('./openclaw.plugin.json',import.meta.url),'utf8'));
+  assert.equal(manifest.activation.onStartup,true);assert.deepEqual(manifest.contracts.tools,toolNames);
+});
 
 test('large numeric IDs retain exact precision both directions',()=>{
   const p=parseZoho('{"messageId":900000000000000002,"label":"900000000000000002","count":20}');
