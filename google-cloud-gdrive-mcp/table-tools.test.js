@@ -188,3 +188,25 @@ test('dropdown failures report all affected fields and choices without weakening
   });
   assert.equal(f.writes(),0);
 }));
+
+test('supplier master accepts new batch beside unchanged historical duplicate and retries once',()=>fixture(async f=>{
+  const title='03 Supplier Master',table=TABLES[title];
+  f.tabs[0].properties.title=title;f.tabs[0].properties.sheetId=table.id;
+  const old=Array(table.width).fill('');Object.assign(old,{0:'SUP-001',1:'Legacy supplier',15:'New',16:'05-Oct-2026'});
+  const historical=[...old];historical[0]='SUP-001-H1';historical[17]='Historical source';
+  f.tabs[0].rows=[['Title'],['Instructions'],[],table.header.slice(),historical,old];
+  const before=structuredClone(f.tabs[0].rows);
+  const args={fileId:TRACKER_ID,sheetName:title,keyColumn:'Supplier ID',mode:'insert',records:[
+    {'Supplier ID':'SUP-004','Supplier / Producer':'Fresh supplier','Last Contact':'2026-10-16','Supplier Status':'New'},
+    {'Supplier ID':'SUP-005','Supplier / Producer':'Another supplier','Last Contact':'2026-10-16','Supplier Status':'New'},
+  ]};
+  await f.guard.handle('write_table_records',args,f.sheets);
+  assert.deepEqual(f.tabs[0].rows.slice(0,before.length),before);assert.equal(f.writes(),1);
+  await new TableGuard(f.statePath).handle('write_table_records',args,f.sheets);assert.equal(f.writes(),1);
+  for(const records of [
+    [{'Supplier ID':'SUP-006','Supplier / Producer':'Legacy supplier'}],
+    [{'Supplier ID':'SUP-001','Notes / Risks':'Changing ambiguous company'}],
+    [{'Supplier ID':'SUP-007-H1','Supplier / Producer':'Invalid new ID'}],
+  ])await assert.rejects(f.guard.handle('write_table_records',{...args,mode:'upsert',records},f.sheets),/BLOCKED/);
+  assert.equal(f.writes(),1);
+}));

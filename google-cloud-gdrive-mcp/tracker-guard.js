@@ -55,7 +55,19 @@ export function parseTarget(args) {
 
 export function validateRows(title, rows, {baselineRows} = {}) {
   const table = TABLES[title];
-  const ids = new Set(), companies = new Set(), quotes = new Map();
+  const ids = new Map(), companies = new Map(), quotes = new Map();
+  const baselineIds = new Map(), baselineCompanies = new Map();
+  const addGroup = (groups, identity, index, row) => {
+    if (!groups.has(identity)) groups.set(identity, []);
+    groups.get(identity).push({index, row:pad([row],1,table.width)[0]});
+  };
+  if (title === '03 Supplier Master' && baselineRows) {
+    baselineRows.forEach((row,index) => {
+      if (index < 4 || !occupied(row)) return;
+      addGroup(baselineIds,norm(row[0]),index,row);
+      addGroup(baselineCompanies,norm(row[1]),index,row);
+    });
+  }
   const quoteKey = quoteIdentity;
   const baselineQuotes = new Map();
   if (title === '04 Price Specs Capacity' && baselineRows) {
@@ -75,10 +87,16 @@ export function validateRows(title, rows, {baselineRows} = {}) {
       if (typeof value === 'string' && value.trimStart().startsWith('=')) fail('Formulas cannot be inserted or overwritten.');
     }
     if (title === '03 Supplier Master') {
-      if (!/^SUP-\d+$/.test(String(row[0])) || !norm(row[1])) fail('Supplier ID and company name are required.');
-      if (ids.has(norm(row[0]))) fail(`Duplicate supplier ID ${row[0]}; operator cleanup required.`);
-      if (companies.has(norm(row[1]))) fail('Duplicate supplier company; operator reconciliation required.');
-      ids.add(norm(row[0])); companies.add(norm(row[1]));
+      // A human may already have assigned a historical suffix. Preserve that
+      // exact row; never manufacture a new noncanonical ID or edit it silently.
+      const unchanged = baselineRows && isDeepStrictEqual(
+        pad([row],1,table.width)[0], pad([baselineRows[rowIndex]],1,table.width)[0]);
+      if (!/^SUP-\d+$/.test(String(row[0])) && !unchanged) {
+        fail(`Supplier ID at row ${rowIndex+1} must use SUP-<digits>; received ${JSON.stringify(row[0])}. Preserve existing historical rows unchanged.`);
+      }
+      if (!norm(row[0]) || !norm(row[1])) fail(`Supplier ID and company name are required at row ${rowIndex+1}.`);
+      addGroup(ids,norm(row[0]),rowIndex,row);
+      addGroup(companies,norm(row[1]),rowIndex,row);
       if (cell(row[4]) !== '' && !/^\+?[\d ().-]{6,40}$/.test(String(row[4]))) fail('Phone / WA must be a phone identifier, not narrative.');
       if (cell(row[5]) !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(row[5]))) fail('Email column contains a non-email value.');
       if (cell(row[15]) !== '' && !['new','contacted','rfq sent','quote received','sample received','approved','rejected','inactive'].includes(norm(row[15]))) fail('Supplier Status must match the immutable Reference Lists options.');
@@ -97,6 +115,18 @@ export function validateRows(title, rows, {baselineRows} = {}) {
       const v = String(cell(row[i]));
       const serial = typeof row[i] === 'number' && Number.isInteger(row[i]) && row[i]>=29221 && row[i]<=73415;
       if (v && !serial && !/^(?:\d{4}-\d{2}-\d{2}|\d{1,2}-(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{4})$/.test(v)) fail(`Date column ${i+1} requires an explicit date, not narrative/email.`);
+    }
+  }
+  if (title === '03 Supplier Master') {
+    for (const [label,groups,baseline] of [
+      ['supplier ID',ids,baselineIds], ['supplier company',companies,baselineCompanies],
+    ]) {
+      for (const identity of new Set([...groups.keys(),...baseline.keys()])) {
+        const group=groups.get(identity)||[], prior=baseline.get(identity)||[];
+        if ((group.length>1 || prior.length>1) && !isDeepStrictEqual(group,prior)) {
+          fail(`Duplicate ${label} ${identity} at rows ${group.map(r=>r.index+1).join(', ')}. Preserve existing duplicate rows unchanged; unrelated new suppliers may be added.`);
+        }
+      }
     }
   }
   // Existing ambiguity must not freeze unrelated work. Its exact rows and

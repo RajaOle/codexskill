@@ -13,3 +13,10 @@ After code/tool allowlist changes restart openclaw-gateway.service and verify re
 ## Safe human column changes (2026-10-14)
 
 inspect_table performs two stable reads before adopting additive human column changes on operational tables, including an empty Phone / Email split into adjacent Phone and Email columns. All other old fields must remain in order; titles/instruction rows stay exact. Previous header/template snapshots are retained privately in revisions. No Sheet cells, formatting, validation or formulas change during adoption. Writes do not refresh snapshots: inspect first, then write with exact new field names. Legacy positional supplier/price schemas and expense/reference templates cannot refresh. Renames, removals, reorders, populated mixed-contact splits and formula/duplicate headers fail closed. Concurrent edits still block preflight/readback. Mixed Phone / Email validation accepts either contact type; dedicated fields retain strict typing. Never reset table-state.json to bypass a blocker.
+
+
+## Supplier validator recovery (2026-10-16)
+
+Supplier Master validation now compares planned data to the exact preflight baseline. Historical duplicate Supplier ID/company groups may remain only with identical full rows at identical positions. Existing noncanonical historical IDs may remain only in unchanged rows. New IDs still require SUP-<digits>, new collisions and edits to ambiguous rows fail, and all header/formula/type/dropdown/concurrency/readback checks remain. Error text names the actual row and invalid ID. Do not recommend renaming to SUP-001-H1: that is not a valid new ID. An unrelated import must proceed without rewriting old duplicates.
+
+AGENTS.md is a compact task router; OPERATIONS.md holds the full operating reference. Startup no longer requires loading every reference or reviewing unrelated inbox/workbook queues. Live replies occur once after completion; behavior tests use the existing no-delivery SOP. Never create production probe rows or workbooks for tests.

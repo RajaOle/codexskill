@@ -99,3 +99,34 @@ test('target formula and silent erasure are blocked',async()=>{
     await assert.rejects(guardedWrite(args([value]),m.sheets),/BLOCKED/);noWrite(m);
   }
 });
+
+test('unchanged supplier duplicates and historical IDs do not freeze unrelated additions',()=>{
+  const first=supplier(),historical=supplier('SUP-001-H1');historical[17]='Different historical note';
+  const next=supplier('SUP-004');next[1]='New supplier';
+  const duplicate=supplier();duplicate[17]='Separate source';
+  for(const second of [duplicate,historical]) {
+    const baseline=[[],[],[],schema.header,first,second];
+    assert.doesNotThrow(()=>validateRows(title,[...baseline,next],{baselineRows:baseline}));
+    for(const planned of [
+      [...baseline,[...first]],
+      [...baseline,next,[...next]],
+      baseline.map((row,i)=>i===4?row.map((v,c)=>c===17?'changed':v):row),
+      [...baseline.slice(0,4),second,first],
+    ]) {
+      assert.throws(()=>validateRows(title,planned,{baselineRows:baseline}),/Duplicate|historical/);
+    }
+    const invalid=[...next];invalid[0]='SUP-004-H1';
+    assert.throws(()=>validateRows(title,[...baseline,invalid],{baselineRows:baseline}),/Supplier ID.*row 7.*SUP-004-H1/);
+  }
+});
+
+test('supplier duplicate ID and company checks are independent',()=>{
+  const a=supplier(),b=supplier();b[1]='Other company';
+  const baseline=[[],[],[],schema.header,a,b];
+  const next=supplier('SUP-002');next[1]='Fresh company';
+  assert.doesNotThrow(()=>validateRows(title,[...baseline,next],{baselineRows:baseline}));
+  const changed=structuredClone(baseline);changed[5][17]='Changed ambiguous record';
+  assert.throws(()=>validateRows(title,changed,{baselineRows:baseline}),/Duplicate supplier ID/);
+  const collision=[...next];collision[1]=a[1];
+  assert.throws(()=>validateRows(title,[...baseline,collision],{baselineRows:baseline}),/Duplicate supplier company/);
+});
