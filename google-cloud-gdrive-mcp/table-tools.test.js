@@ -24,6 +24,8 @@ async function fixture(fn,rows=[['Bank ID','Bank Name','Email','Phone/WhatsApp',
   try{await fn({guard,tabs,sheets:{spreadsheets},args,writes:()=>writes,setCorrupt:()=>{corrupt=true;},statePath:path.join(temp,'state.json')});}finally{await rm(temp,{recursive:true,force:true});}
 }
 test('bank tab works immediately; fields map to headers and retries are idempotent across restart',()=>fixture(async f=>{
+  const inspected=JSON.parse((await f.guard.handle('inspect_table',f.args,f.sheets)).content[0].text);
+  assert.equal(inspected.fieldRules['Minimum Facility USD'].type,'number');
   await f.guard.handle('write_table_records',f.args,f.sheets);
   assert.deepEqual(f.tabs[0].rows[0].slice(0,5),['Bank ID','Bank Name','Email','Phone/WhatsApp','Minimum Facility USD']);
   assert.equal(f.tabs[0].rows[1][2],'hello@example.com');assert.equal(f.writes(),1);
@@ -210,3 +212,20 @@ test('supplier master accepts new batch beside unchanged historical duplicate an
   ])await assert.rejects(f.guard.handle('write_table_records',{...args,mode:'upsert',records},f.sheets),/BLOCKED/);
   assert.equal(f.writes(),1);
 }));
+
+test('inspection exposes current dropdown choices and types before any write',()=>fixture(async f=>{
+  const title='03 Supplier Master';f.tabs[0].properties.title=title;
+  const original=f.sheets.spreadsheets.get;
+  f.sheets.spreadsheets.get=async args=>args.includeGridData?{data:{sheets:[{data:[{startColumn:6,rowData:[{values:[
+    {dataValidation:{condition:{type:'ONE_OF_RANGE',values:[{userEnteredValue:'=Reference Lists!L2:L8'}]}}},
+  ]}]}]}]}}:original(args);
+  const get=f.sheets.spreadsheets.values.get;
+  f.sheets.spreadsheets.values.get=async args=>args.range==='Reference Lists!L2:L8'?{data:{values:[['Vanilla (cured bean)'],['Other'],['Other'],[]]}}:get(args);
+  const before=structuredClone(f.tabs[0].rows);
+  const info=JSON.parse((await f.guard.handle('inspect_table',{fileId:TRACKER_ID,sheetName:title},f.sheets)).content[0].text);
+  assert.deepEqual(info.fieldRules.Commodity.allowedValues,['Vanilla (cured bean)','Other']);
+  assert.equal(info.fieldRules['Last Contact'].format,'YYYY-MM-DD');
+  assert.equal(info.fieldRules['Typical MOQ'].type,'number');
+  assert.deepEqual(info.requiredFields,['Supplier ID','Supplier / Producer']);
+  assert.equal(info.validationRow,5);assert.equal(f.writes(),0);assert.deepEqual(f.tabs[0].rows,before);
+},[[],[],[],TABLES['03 Supplier Master'].header]));

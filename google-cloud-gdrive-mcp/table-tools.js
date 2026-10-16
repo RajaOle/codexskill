@@ -17,7 +17,7 @@ const result = data => ({content:[{type:'text',text:JSON.stringify(data)}]});
 const string = {type:'string'};
 const tool = (name,description,properties,required) => ({name,description,inputSchema:{type:'object',additionalProperties:false,properties,required}});
 export const tableTools = [
-  tool('inspect_table','Discover live headers; safely refresh human-added columns or an empty Phone / Email split. Never changes Sheet cells. Returns exact field names and next data row; inspect again after a human layout change.',{fileId:string,sheetName:string},['fileId','sheetName']),
+  tool('inspect_table','Discover live headers, field types, required fields and current dropdown choices BEFORE writing. Returns the validation sample row and next data row. Safely refreshes human-added columns or an empty Phone / Email split; never changes Sheet cells.',{fileId:string,sheetName:string},['fileId','sheetName']),
   tool('initialize_table','Create a new tab or initialize a completely blank tab ONCE. Set title/description/headers and initial header formatting; existing nonempty tabs are never overwritten. Headers become immutable.',{fileId:string,sheetName:string,headers:{type:'array',minItems:2,maxItems:100,items:string},title:string,description:string},['fileId','sheetName','headers']),
   tool('write_table_records','Insert or update records using EXACT live header names as object keys. Backend maps columns and selects rows; never supply coordinates. Supply keyColumn (unique record ID/name) for idempotent retries; mode=insert preserves history, upsert updates only supplied fields. Unchanged historical supplier/quote duplicates do not block unrelated new records. New Supplier IDs use SUP-<digits>; never rename existing IDs for cleanup. Never rewrites headers/formulas.',{fileId:string,sheetName:string,keyColumn:string,mode:{type:'string',enum:['insert','upsert']},records:{type:'array',minItems:1,maxItems:100,items:{type:'object',additionalProperties:{type:['string','number','boolean']}}}},['fileId','sheetName','keyColumn','mode','records']),
 ];
@@ -165,6 +165,43 @@ export class TableGuard {
     if((known?.numeric.includes(index) || /^(?:Minimum Facility USD|Amount|Quantity|Rate|Supplier Price|MOQ \(kg\)|.*Capacity.*\(kg\))$/i.test(header)) && typeof value!=='number')fail(header+' requires a numeric value.');
     if((known?.dates.includes(index)|| /^(?:Quote Date|Date|Last Contact|Quote Valid Until)$/i.test(header)) && !(typeof value==='number'||/^\d{4}-\d{2}-\d{2}$/.test(String(value))))fail(header+' requires YYYY-MM-DD.');
   }
+  async inspectRules(args,view,p,sheets) {
+    const known=args.fileId===TRACKER_ID?TABLES[args.sheetName]:undefined;
+    const fieldRules={};
+    p.headers.forEach((h,i)=>{
+      const rule={};
+      if(known?.numeric.includes(i)||/^(?:Minimum Facility USD|Amount|Quantity|Rate|Supplier Price|MOQ \(kg\)|.*Capacity.*\(kg\))$/i.test(h))rule.type='number';
+      if(known?.dates.includes(i)||/^(?:Quote Date|Date|Last Contact|Quote Valid Until)$/i.test(h))rule.format='YYYY-MM-DD';
+      if(/email|phone|whatsapp|\bwa\b/i.test(h))rule.type='text contact identifier';
+      if(known && args.sheetName==='03 Supplier Master' && i===0)rule.format='SUP-<digits> for new records; existing IDs immutable';
+      if(Object.keys(rule).length)fieldRules[h]=rule;
+    });
+    const validationRow=Math.min(p.nextRow,view.tab.gridProperties.rowCount);
+    const detail=await sheets.spreadsheets.get({spreadsheetId:args.fileId,
+      ranges:[quote(args.sheetName)+'!A'+validationRow+':'+column(p.headers.length-1)+validationRow],
+      includeGridData:true,fields:'sheets(data(startColumn,rowData(values(dataValidation))))'},options);
+    const sources=new Map();
+    for(const sheet of detail.data.sheets||[])for(const grid of sheet.data||[])for(const row of grid.rowData||[])for(const [i,target]of (row.values||[]).entries()) {
+      const h=p.headers[(grid.startColumn||0)+i],condition=target.dataValidation?.condition;
+      if(!h||!condition)continue;
+      let choices;
+      const rule=fieldRules[h]||{};
+      if(condition.type==='ONE_OF_LIST')choices=(condition.values||[]).map(v=>v.userEnteredValue);
+      if(condition.type==='ONE_OF_RANGE') {
+        const sourceRange=condition.values?.[0]?.userEnteredValue?.replace(/^=/,'');
+        if(!sourceRange)fail('Existing dropdown source range is invalid.');
+        if(!sources.has(sourceRange))sources.set(sourceRange,(await sheets.spreadsheets.values.get({spreadsheetId:args.fileId,range:sourceRange,valueRenderOption:'UNFORMATTED_VALUE'},options)).data.values||[]);
+        choices=sources.get(sourceRange).flat().filter(v=>cell(v)!=='');rule.sourceRange=sourceRange;
+      }
+      if(condition.type==='BOOLEAN')choices=condition.values?.length?condition.values.map(v=>v.userEnteredValue):[true,false];
+      if(choices){rule.allowedValues=[...new Set(choices)].slice(0,100);rule.choicesTruncated=new Set(choices).size>100;}
+      else rule.validationType=condition.type;
+      fieldRules[h]=rule;
+    }
+    return {fieldRules,validationRow,
+      requiredFields:known?args.sheetName==='03 Supplier Master'?['Supplier ID','Supplier / Producer']:['Quote Date','Supplier ID','Supplier','Commodity']:[],
+      preservation:'Unchanged historical supplier/quote duplicates do not block unrelated new records. Never rename IDs or delete old rows. Validation is checked again at actual target cells.'};
+  }
   async write(args,sheets) {
     if(!['insert','upsert'].includes(args.mode)||!Array.isArray(args.records)||!args.records.length||args.records.length>100)fail('Supply insert/upsert and 1–100 records.');
     const before=await this.read(args,sheets);const p=this.discover(args,before);
@@ -243,7 +280,8 @@ export class TableGuard {
       const fresh=await this.read(args,sheets);
       if(!equal(view,fresh))fail('Concurrent edit during inspection; inspect fresh table again.');
       const p=this.discover(args,view,true);
-      return result({sheetName:args.sheetName,headerRow:p.headerRow,headers:p.headers,nextRow:p.nextRow,headersProtected:true});
+      const rules=await this.inspectRules(args,view,p,sheets);
+      return result({sheetName:args.sheetName,headerRow:p.headerRow,headers:p.headers,nextRow:p.nextRow,headersProtected:true,...rules});
     });
   }
 }

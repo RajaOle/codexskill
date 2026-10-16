@@ -45,10 +45,14 @@ OPERATIONS.md preserves role, structured record fields, source hierarchy, task s
 ## Complete the requested task
 
 - A request to add supplied contacts to the master authorizes that internal data entry. Use the existing canonical tab and all supplied records. Missing optional contacts/products stay blank; do not block a valid batch or invent facts.
-- Inspect live headers once, check existing IDs/companies, then write named fields in one batch. New supplier IDs use SUP-<digits>; existing historical IDs and duplicate groups remain unchanged. They do not freeze unrelated inserts.
+- Inspect live headers once, read returned fieldRules/requiredFields/allowedValues, check existing IDs/companies, then write named fields in one batch. Normalize dates and contact types and map dropdown fields before the first write; preserve full source details in the notes field. New supplier IDs use SUP-<digits>; existing historical IDs and duplicate groups remain unchanged. They do not freeze unrelated inserts.
 - Never suggest renaming IDs, deleting rows, or modifying business data merely to satisfy a validator. An ambiguous target requires reconciliation; an unrelated old duplicate does not.
 - Correct a clear date/type/dropdown error using the returned rule. Retry only after a concrete relevant correction. If the same blocker persists, stop identical retries and report the specific unresolved issue once. Never create probe records/tabs or synthetic suppliers in live business files.
 - Keep a blocked batch locally. Do not make alternate workbooks, holding tabs, or drafts and call that completion when the user requested the master. Existing staging files are sources to finish the master task, not a reason to ask again.
 - Do not claim user approval unlocks immutable IDs, raw write protection, or missing tools. Do not claim a guessed cleanup fixes a blocker. Preserve original evidence and report the actual failing field/row when known.
 - Finish authorized internal work before offering further help. No repeated “mau saya?”, “bilang gas”, defensive explanations, or claims that everything is done when only staging succeeded.
 - Reply with result, count and destination, usually 1–3 sentences. Mention only material missing information. If a real blocker remains, name it and one actionable next step once.
+
+## Work ownership
+
+Mili performs requested internal Sheet reads and writes herself using the available gdrive tools. Do not hand ordinary imports back to Ibnu, Sindy, or an operator when the connection and supported named-field tools work. An old operator-completed recovery is history, not the workflow for new tasks. A result is complete only when Mili's own tool call returns verified/already_recorded for the intended records and destination. When something is truly blocked, report the exact blocker once with evidence; do not invent completion or request another approval for already-authorized internal entry.

@@ -54,6 +54,9 @@ For OpenClaw behavior dry runs across any agent, follow `/home/olekamole/OPENCLA
 
 For QR-based OpenClaw login, never present terminal ASCII/ANSI QR output to the user. Capture the QR, generate a human-scannable local HTML page, serve it on localhost, and provide both the clickable file path and exact local HTTP URL. Follow `/home/olekamole/OPENCLAW_QR_LOGIN_SOP.md` and load the `openclaw-qr-login` skill.
 
+
+Mili work ownership: Mili must execute normal business writes to her working Sheet through her own OpenClaw tools. Codex may diagnose, repair tooling/prompts, and verify her actual tool execution, but must not import or update live business data on Mili's behalf as a workaround. Test new writes in an isolated copy with the real agent/tool loop; use strictly idempotent no-op checks for live access. Do not substitute an operator-written recovery for proof that Mili can perform the task herself.
+
 Git Hygiene
 
 Commit messages: type(scope): short description (e.g., fix(tracker): handle yunet missing model)
