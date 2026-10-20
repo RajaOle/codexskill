@@ -7,20 +7,23 @@ import {ZohoMailbox,makeMailTools,parseZoho,encodeZoho,savePrivate,readPrivate,f
 import {setupPage,createSetupHandler} from './setup.mjs';
 import {Readable} from 'node:stream';
 import {fileResult,MAX_FILE_BYTES} from '../mili-attachments/files.js';
+import {planMailQuery,normalizeSearch} from './query.js';
 
 const credentials={region:'com',mailbox:'sindy@example.com',clientId:'test-client',clientSecret:'test-secret',refreshToken:'test-refresh'};
 const accountId='900000000000000001',messageId='900000000000000002';
 const reply=data=>new Response(JSON.stringify({status:{code:200},...data}),{status:200});
 async function fixture(fn) {
   const root=await mkdtemp(path.join(os.tmpdir(),'mili-zoho-test-')),calls=[];
-  const state={wrongAccount:false,failPost:false,failUpload:false,rateLimit:false};
+  const state={wrongAccount:false,failPost:false,failUpload:false,rateLimit:false,rejectSearch:false,invalidList:false};
   const fetcher=async(url,options)=>{
     url=String(url);calls.push({url,options});
     if(url.includes('/oauth/'))return reply({access_token:'test-access',expires_in:3600});
     if(url.endsWith('/api/accounts'))return reply({data:[{type:'ZOHO_ACCOUNT',primaryEmailAddress:state.wrongAccount?'other@example.com':credentials.mailbox,accountId}]});
     assert(url.startsWith('https://mail.zoho.com/api/accounts/'+accountId));
-    if(state.rateLimit)return new Response('{"error":"rate_limited"}',{status:429});
-    if(url.endsWith('/folders'))return reply({data:[{folderId:'123',folderType:'Trash',path:'/Trash'}]});
+    if(state.rateLimit)return new Response('{"error":"rate_limited"}',{status:429,headers:{'Retry-After':'120'}});
+    if(url.endsWith('/folders'))return reply({data:[{folderId:'123',folderType:'Trash',path:'/Trash'},{folderId:'111',folderType:'Inbox',path:'/Inbox'},{folderId:'222',folderType:'Sent',path:'/Sent'},{folderId:'333',folderType:'Inbox',path:'/Custom'}]});
+    if(url.includes('/messages/search?')&&state.rejectSearch)return new Response('{"status":{"code":400},"error":"private-provider-body"}',{status:400});
+    if(url.includes('/messages/view?')||url.includes('/messages/search?'))return reply({data:state.invalidList?{}:[{messageId,folderId:'111',subject:'Fixture reply'}]});
     if(url.includes('/messages/attachments?')) {
       assert.equal(options.headers['Content-Type'],undefined);
       assert.equal(new URL(url).searchParams.get('uploadType'),'multipart');
@@ -94,6 +97,82 @@ test('search pagination, read routes and injection labels are bounded',()=>fixtu
   assert((await f.mailbox.run('read',{folder_id:'111',message_id:messageId})).untrustedEmailData);
   await assert.rejects(f.mailbox.run('read',{folder_id:'../../accounts',message_id:messageId}),/IDs/);
   await assert.rejects(f.mailbox.run('search',{search_key:'x',limit:1000}),/pagination/);
+}));
+test('folder review uses exact discovered folder and listing API, with explicit pagination',()=>fixture(async f=>{
+  const page=await f.mailbox.run('search',{folder:'Inbox',limit:1});
+  assert.equal(page.mode,'folder');assert.equal(page.folder,'Inbox');
+  assert.deepEqual(page.pagination,{start:1,limit:1,next_start:2,complete:false});
+  const call=f.calls.find(c=>c.url.includes('/messages/view?'));
+  assert.equal(new URL(call.url).searchParams.get('folderId'),'111');
+  assert.equal(new URL(call.url).searchParams.get('sortorder'),'false');
+  assert(!f.calls.some(c=>c.url.includes('/messages/search')));
+  const next=await f.mailbox.run('search',{folder_id:'111',start:2,limit:20});
+  assert.equal(next.pagination.complete,true);
+  assert.equal(next.pagination.next_start,null);
+  await assert.rejects(f.mailbox.run('search',{folder:'Archive'}),e=>e.code==='MAIL_FOLDER_NOT_FOUND');
+  assert.equal(f.calls.filter(c=>c.url.includes('/messages/view?')).length,2);
+}));
+test('structured filters compile Zoho separators and dates; conflicting and malformed inputs never reach network',()=>fixture(async f=>{
+  await f.mailbox.run('search',{folder:'Inbox',sender:'buyer@example.com',subject:'Re: Vanilla offer',from_date:'2026-10-01',to_date:'2026-10-20'});
+  const call=f.calls.find(c=>c.url.includes('/messages/search?'));
+  assert.equal(new URL(call.url).searchParams.get('searchKey'),'in:Inbox::sender:"buyer@example.com"::subject:"Re: Vanilla offer"::fromDate:1-Oct-2026::toDate:20-Oct-2026');
+  const n=f.calls.length;
+  for(const p of [{search_key:'***'},{search_key:'in:Inbox sender:buyer@example.com'},{search_key:'is:unread'},{search_key:'subject:"unfinished'},{from_date:'2026-02-30'},{from_date:'2026-10-20',to_date:'2026-10-01'},{subject:'offer"::in:Sent'},{search_key:'newMails',folder:'Inbox'},{folder_id:'111',subject:'offer'},{folder:'Inbox',folder_id:'111'},{folder:'Inbox',limit:0},{folder:'Inbox',start:1.5},{sender:'x',status:'unread'}]) {
+    await assert.rejects(f.mailbox.run('search',p),e=>e.code==='MAIL_QUERY_INVALID');
+  }
+  assert.equal(f.calls.length,n);
+  assert.equal(normalizeSearch('from:buyer@example.com::subject:"Vanilla offer"'),'sender:buyer@example.com::subject:"Vanilla offer"');
+  assert.equal(normalizeSearch('sender:a@example.com::or:to:b@example.com'),'sender:a@example.com::or:to:b@example.com');
+  assert.equal(planMailQuery({search_key:'in:Inbox'}).mode,'folder');
+}));
+test('provider rejection is an error, blocked across contexts; folder fallback never claims original filters matched',()=>fixture(async f=>{
+  f.state.rejectSearch=true;
+  const p={sender:'buyer@example.com'};
+  await assert.rejects(f.mailbox.run('search',p),e=>e.code==='MAIL_SEARCH_REJECTED'&&!e.message.includes('private-provider-body'));
+  const restartContext=new ZohoMailbox({root:f.root,fetcher:f.mailbox.fetcher,load:()=>credentials});
+  await assert.rejects(restartContext.run('search',{...p,start:2}),e=>e.code==='MAIL_SEARCH_REJECTED');
+  assert.equal(f.calls.filter(c=>c.url.includes('/messages/search?')).length,1);
+  const tools=makeMailTools({agentId:'mili',sessionKey:'agent:mili:fixture',requesterSenderId:'trusted'},restartContext,['trusted']);
+  const response=await tools.find(t=>t.name==='mili_mail_search').execute('x',p);
+  assert.equal(response.isError,true);
+  const detail=JSON.parse(response.content[0].text);
+  assert.equal(detail.mailbox_review_complete,false);assert.equal(detail.retry_same_query,false);assert(!('data'in detail));
+  const page=await restartContext.run('search',{folder:'Inbox'});
+  assert.equal(page.mode,'folder');assert.equal(page.data.length,1);
+}));
+test('authorization and rate-limit failures never become query retries or successful empty pages',()=>fixture(async f=>{
+  f.state.wrongAccount=true;
+  await assert.rejects(f.mailbox.run('search',{sender:'buyer@example.com'}),/does not match/);
+  f.state.wrongAccount=false;
+  assert.equal((await f.mailbox.run('search',{sender:'buyer@example.com'})).data.length,1);
+  f.state.invalidList=true;
+  await assert.rejects(f.mailbox.run('search',{folder_id:'111'}),e=>e.code==='MAIL_RESPONSE_INVALID');
+  f.state.invalidList=false;
+  f.state.rateLimit=true;
+  await assert.rejects(f.mailbox.run('search',{folder:'Inbox'}),/429/);
+  const count=f.calls.length;
+  const nextContext=new ZohoMailbox({root:f.root,fetcher:f.mailbox.fetcher,load:()=>credentials});
+  await assert.rejects(nextContext.run('search',{folder_id:'111'}),e=>e.code==='MAIL_RATE_LIMITED');
+  const tools=makeMailTools({agentId:'mili',sessionKey:'agent:mili:fixture',requesterSenderId:'trusted'},f.mailbox,['trusted']);
+  const limited=await tools.find(t=>t.name==='mili_mail_search').execute('x',{folder:'Inbox'});
+  const detail=JSON.parse(limited.content[0].text);
+  assert.equal(limited.isError,true);assert.equal(detail.code,'MAIL_RATE_LIMITED');
+  assert(detail.retry_after_seconds>0&&detail.retry_after_seconds<=120);
+  assert.equal(f.calls.length,count);
+}));
+test('review reports network and authorization blockers without echoing private errors or suggesting syntax fixes',()=>fixture(async f=>{
+  const tool=makeMailTools({agentId:'mili',sessionKey:'agent:mili:fixture',requesterSenderId:'trusted'},f.mailbox,['trusted']).find(t=>t.name==='mili_mail_search');
+  f.mailbox.fetcher=async()=>{throw new Error('private-network-detail fixture-secret');};
+  const network=await tool.execute('x',{folder:'Inbox'});
+  assert.equal(network.isError,true);
+  assert.equal(JSON.parse(network.content[0].text).code,'MAIL_NETWORK_UNAVAILABLE');
+  assert(!network.content[0].text.includes('private-network-detail'));
+  f.mailbox.fetcher=async()=>new Response('{"status":{"code":401},"error":"private-auth-detail"}',{status:401});
+  const auth=await tool.execute('x',{folder:'Inbox'});
+  const detail=JSON.parse(auth.content[0].text);
+  assert.equal(auth.isError,true);assert.equal(detail.code,'MAIL_AUTH_REQUIRED');
+  assert(!auth.content[0].text.includes('private-auth-detail'));
+  assert(!('retry_after_seconds'in detail));
 }));
 test('updates use exact precision; trash is reversible and needs approval',()=>fixture(async f=>{
   await f.mailbox.run('update',{message_id:messageId,action:'read'});

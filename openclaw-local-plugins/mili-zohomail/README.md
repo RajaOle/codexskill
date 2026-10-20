@@ -8,6 +8,14 @@ The send approval flag is asserted by Mili after interpreting an authorized user
 
 ## Private setup
 
+### Mailbox review and search reliability
+
+`mili_mail_search` accepts structured arguments. `{ "folder": "Inbox" }` (also the default for `{}`) discovers the exact standard folder and calls GET `/messages/view`, sorted newest first. Optional `status` is all/read/unread; `folder_id` lists an exact discovered folder. This path never depends on free-form search syntax. Optional sender/subject/contains/from_date/to_date filters compile to Zoho clauses with explicit separators and quoted literals; ISO dates are checked for real calendar dates and converted to Zoho's date format. Structured searches default to Inbox. Do not combine raw `search_key` with structured filters. Advanced raw keys accept a bounded documented subset and normalize the sender alias `from:` to `sender:`.
+
+Results include mode and pagination (start, limit, next_start, complete). A full page is never reported as a complete mailbox review. Invalid requests fail locally. Search-endpoint HTTP/API 400 responses block an identical normalized query across tool contexts for five minutes, bounded to 100 credential-scoped hashes; they never trigger automatic broader searches or mutation retries. These caches reset on process restart. Folder listing remains independently available after a search-syntax rejection. HTTP/API 429 sets a separate credential-scoped review cooldown across folder/search arguments and tool contexts, honoring Retry-After with a minimum of 60 seconds and a maximum of one day. Further review calls during that interval fail locally without reaching Zoho. Errors retain isError and explicit mailbox_review_complete=false; neither invalid provider response shapes nor failed searches become empty success. Provider response bodies and credentials remain hidden. The sender authorization check still runs before request validation or API access.
+
+References: [List emails](https://www.zoho.com/mail/help/api/get-emails-list.html), [Search syntax](https://www.zoho.com/mail/help/search-syntax.html). Run `node --test index.test.js` for mocked regression coverage. Read-only live folder review can check provider compatibility without creating or sending mail.
+
 Default state directory: `~/.openclaw/zoho-mail-sindy` (or MILI_ZOHO_STATE_DIR). Directory 0700, files 0600. Never publish credentials.json, authorized-users.json, operations.json, received mail or actual mailbox identifiers.
 
 Create authorized-users.json locally with senderIds copied from the verified local Mili USER.md. Credentials JSON fields: region, mailbox, clientId, clientSecret, refreshToken, accountId. Do not store a login password. Scopes: ZohoMail.accounts.READ, ZohoMail.messages.ALL, ZohoMail.folders.READ. No organization/admin scopes.
