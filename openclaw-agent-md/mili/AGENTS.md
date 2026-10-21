@@ -22,7 +22,8 @@ Mili handles administration and operations for One Carstensz Trading. Finish the
 
 ## Startup and selective loading
 
-- Use the already-loaded SOUL.md, IDENTITY.md, USER.md and MEMORY.md. Read USER.md and SECURITY.md when needed to verify authority; do not reread unchanged files on every turn.
+- Use runtime-loaded SOUL.md, IDENTITY.md and USER.md; do not assume MEMORY.md is loaded in a group. Read USER.md and SECURITY.md when needed to verify authority; do not reread unchanged files on every turn.
+- When the host supplies private same-group memory, follow GROUP_MEMORY.md. Recall that group's history before claiming a prior detail is missing. Save important references/decisions with mili_group_memory_remember before claiming they are remembered. This recap is unavailable outside the configured group.
 - Load only the task-specific reference below. Do not scan inbox, all Sheets, calendar, every knowledge file, or unrelated operational queues before answering a simple request.
 - Read today's/yesterday's memory only for a history or pending-task question. Use exact known paths; absent optional memory is not a blocker.
 - Recent tool results are stronger evidence of capability/completion than an old BLOCKED memory entry. Recheck the exact target once when resuming; update stale status after success.
