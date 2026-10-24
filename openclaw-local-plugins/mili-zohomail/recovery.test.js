@@ -20,6 +20,10 @@ async function fixture(fn) {
       return response({messageId:'999'});
     }
     if(route.endsWith('/folders'))return response([{folderId:'222',folderType:'Sent',path:'/Sent'}]);
+    if(route.endsWith('/messages/view')) {
+      if(state.reviewFails)throw new Error('fixture review network failure');
+      return response(state.pages?.[new URL(url).searchParams.get('start')]||[]);
+    }
     if(route.endsWith('/details'))return response({...state.details});
     if(route.endsWith('/content'))return response({content:state.content??original.content});
     throw new Error('Unexpected fixture route');
@@ -32,6 +36,10 @@ async function fixture(fn) {
   } finally {await rm(root,{recursive:true,force:true});}
 }
 const proof={...original,folder_id:'222',message_id:'999'};
+function settle(f) {
+  const file=path.join(f.root,'operations.json'),ledger=readPrivate(file);
+  ledger[original.request_id].at=new Date(Date.now()-180000).toISOString();savePrivate(file,ledger);
+}
 
 test('network codes and stages are safe; compose waits 60 seconds without retries',async()=>{
   let calls=0;
@@ -148,4 +156,49 @@ test('concurrent distinct operations preserve both ledger records',()=>fixture(a
   assert.equal(ledger['concurrent-task-001'].status,'done');
   assert.equal(ledger['concurrent-task-002'].status,'done');
   assert.equal(ledger[original.request_id].status,'uncertain');
+}));
+
+test('explicit approved retry uses original ID once after complete Sent review',()=>fixture(async f=>{
+  settle(f);f.state.fail=false;
+  const result=await f.mailbox.run('send',{...original,retry_uncertain:true});
+  assert.equal(result.status,'sent');
+  const entry=readPrivate(path.join(f.root,'operations.json'))[original.request_id];
+  assert.equal(entry.retryUsed,true);assert.equal(entry.retryReview.reviewed,0);
+  assert(entry.previousAttemptAt);
+  await f.mailbox.run('send',{...original,retry_uncertain:true});
+  assert.equal(f.calls.filter(c=>c.route.endsWith('/messages')&&c.method==='POST').length,2);
+}));
+
+test('a second uncertain outcome cannot loop approved retries',()=>fixture(async f=>{
+  settle(f);
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true}),/uncertain/);
+  settle(f);
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true}),error=>error.code==='MAIL_OUTCOME_UNCERTAIN');
+  assert.equal(f.calls.filter(c=>c.route.endsWith('/messages')&&c.method==='POST').length,2);
+}));
+
+test('retry follows Sent pagination and stops on matching subject on later page',()=>fixture(async f=>{
+  settle(f);f.state.fail=false;
+  f.state.pages={1:Array.from({length:50},()=>({subject:'Unrelated'})),51:[{subject:original.subject}]};
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true}),error=>error.code==='MAIL_RECONCILE_REQUIRED');
+  assert.equal(f.calls.filter(c=>c.route.endsWith('/messages/view')).length,2);
+  assert.equal(f.calls.filter(c=>c.route.endsWith('/messages')&&c.method==='POST').length,1);
+  assert.equal(readPrivate(path.join(f.root,'operations.json'))[original.request_id].status,'uncertain');
+}));
+
+test('retry refuses incomplete review, failed review and unsettled submissions',()=>fixture(async f=>{
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true}),/two minutes/);
+  settle(f);f.state.reviewFails=true;
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true}),/network/);
+  f.state.reviewFails=false;f.state.pages={1:[{}]};
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true}),/metadata incomplete/);
+  assert.equal(f.calls.filter(c=>c.route.endsWith('/messages')&&c.method==='POST').length,1);
+}));
+
+test('explicit retry cannot change content, skip approval or invent an ID',()=>fixture(async f=>{
+  settle(f);
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true,content:'changed'}),/different mail/);
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true,approved:false}),/approval/);
+  await assert.rejects(f.mailbox.run('send',{...original,retry_uncertain:true,request_id:'new-request-id'}),/another request_id/);
+  assert.equal(f.calls.filter(c=>c.route.endsWith('/messages')&&c.method==='POST').length,1);
 }));
