@@ -14,6 +14,7 @@
       "mili_mail_read",
       "mili_mail_draft",
       "mili_mail_send",
+      "mili_mail_reconcile",
       "mili_mail_attachments",
       "mili_mail_attachment_to_drive",
       "mili_mail_update",
